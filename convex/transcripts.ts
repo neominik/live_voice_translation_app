@@ -5,11 +5,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 export const addTranscript = mutation({
   args: {
     callId: v.id("calls"),
-    speaker: v.union(v.literal("user"), v.literal("other")),
     originalText: v.string(),
-    originalLanguage: v.string(),
-    translatedText: v.string(),
-    translatedLanguage: v.string(),
     confidence: v.optional(v.number()),
     timestamp: v.optional(v.number()),
   },
@@ -28,11 +24,7 @@ export const addTranscript = mutation({
       callId: args.callId,
       userId,
       timestamp: args.timestamp ?? Date.now(),
-      speaker: args.speaker,
       originalText: args.originalText,
-      originalLanguage: args.originalLanguage,
-      translatedText: args.translatedText,
-      translatedLanguage: args.translatedLanguage,
       confidence: args.confidence,
     });
   },

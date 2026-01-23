@@ -20,10 +20,7 @@ export const generateCallSummary = action({
 
     const conversationText = transcripts
       .map((t: any) => {
-        const translation = t.translatedText
-          ? ` | translation (${t.translatedLanguage}): ${t.translatedText}`
-          : "";
-        return `${t.speaker} (${t.originalLanguage}): ${t.originalText}${translation}`;
+        return t.originalText;
       })
       .join("\n");
 

@@ -26,17 +26,16 @@ export function CallInterface({
   const [needsAudioResume, setNeedsAudioResume] = useState(false);
   const [transcripts, setTranscripts] = useState<
     Array<{
-      speaker: "user" | "other";
       originalText: string;
-      translatedText: string;
       timestamp: number;
     }>
   >([]);
   const [partialTranscript, setPartialTranscript] = useState<{
-    speaker: "user" | "other";
     text: string;
     timestamp: number;
   } | null>(null);
+  const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
+  const shouldAutoScrollRef = useRef(true);
 
   const endCall = useMutation(api.calls.endCall);
   const generateSummary = useAction(api.ai.generateCallSummary);
@@ -125,6 +124,26 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
       }
     };
   }, [connectionState]);
+
+  useEffect(() => {
+    if (!transcriptScrollRef.current) {
+      return;
+    }
+    if (shouldAutoScrollRef.current) {
+      transcriptScrollRef.current.scrollTop =
+        transcriptScrollRef.current.scrollHeight;
+    }
+  }, [transcripts, partialTranscript]);
+
+  const handleTranscriptScroll = () => {
+    const container = transcriptScrollRef.current;
+    if (!container) {
+      return;
+    }
+    const scrollOffset =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+    shouldAutoScrollRef.current = scrollOffset < 16;
+  };
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -281,14 +300,9 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
             if (!deltaText) {
               return;
             }
-            const speaker =
-              payload.type === "input_audio_transcript.delta"
-                ? "user"
-                : "other";
             setPartialTranscript((prev) => {
-              if (!prev || prev.speaker !== speaker) {
+              if (!prev) {
                 return {
-                  speaker,
                   text: deltaText,
                   timestamp: Date.now(),
                 };
@@ -317,7 +331,6 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
             }
             outputTranscriptRef.current = `${outputTranscriptRef.current}${deltaText}`;
             setPartialTranscript({
-              speaker: "other",
               text: outputTranscriptRef.current,
               timestamp: Date.now(),
             });
@@ -342,29 +355,21 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
               return;
             }
 
-            setPartialTranscript((prev) =>
-              prev && prev.speaker === "other" ? null : prev,
-            );
+            setPartialTranscript(null);
 
             const timestamp = Date.now();
 
             setTranscripts((prev) => [
               ...prev,
               {
-                speaker: "other",
                 originalText: finalText,
-                translatedText: "",
                 timestamp,
               },
             ]);
 
             void addTranscript({
               callId,
-              speaker: "other",
               originalText: finalText,
-              originalLanguage: secondaryLanguage,
-              translatedText: "",
-              translatedLanguage: primaryLanguage,
               timestamp,
             });
             return;
@@ -402,9 +407,7 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
             if (!text) {
               return;
             }
-            const speaker = item.role === "assistant" ? "other" : "user";
             setPartialTranscript({
-              speaker,
               text,
               timestamp: Date.now(),
             });
@@ -419,37 +422,24 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
             return;
           }
 
-          const speaker = item.role === "assistant" ? "other" : "user";
-          const originalLanguage =
-            speaker === "user" ? primaryLanguage : secondaryLanguage;
-          const translatedLanguage =
-            speaker === "user" ? secondaryLanguage : primaryLanguage;
           const eventTimestamp =
             typeof item.created_at === "number"
               ? item.created_at * 1000
               : Date.now();
 
-          setPartialTranscript((prev) =>
-            prev && prev.speaker === speaker ? null : prev,
-          );
+          setPartialTranscript(null);
 
           setTranscripts((prev) => [
             ...prev,
             {
-              speaker,
               originalText: text,
-              translatedText: "",
               timestamp: eventTimestamp,
             },
           ]);
 
           void addTranscript({
             callId,
-            speaker,
             originalText: text,
-            originalLanguage,
-            translatedText: "",
-            translatedLanguage,
             timestamp: eventTimestamp,
           });
         } catch (error) {
@@ -658,7 +648,11 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Live Transcript
             </h3>
-            <div className="flex-1 overflow-y-auto space-y-4">
+            <div
+              ref={transcriptScrollRef}
+              className="flex-1 overflow-y-auto divide-y divide-gray-100"
+              onScroll={handleTranscriptScroll}
+            >
               {transcripts.length === 0 ? (
                 <div className="text-center text-gray-500 py-12">
                   <svg
@@ -682,42 +676,18 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
                   ...(partialTranscript
                     ? [
                         {
-                          speaker: partialTranscript.speaker,
                           originalText: partialTranscript.text,
-                          translatedText: "",
                           timestamp: partialTranscript.timestamp,
                           isPartial: true,
                         },
                       ]
                     : []),
                 ].map((transcript, index) => (
-                  <div
-                    key={index}
-                    className={`p-4 rounded-xl ${
-                      transcript.speaker === "user"
-                        ? "bg-blue-50 border-l-4 border-blue-500 ml-8"
-                        : "bg-gray-50 border-l-4 border-gray-500 mr-8"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-sm text-gray-600">
-                        {transcript.speaker === "user" ? "You" : "Other Person"}
-                      </span>
-                      <span className="text-xs text-gray-400">
-                        {new Date(transcript.timestamp).toLocaleTimeString()}
-                      </span>
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-gray-900">
-                        {transcript.originalText}
-                        {"isPartial" in transcript ? "…" : ""}
-                      </p>
-                      {transcript.translatedText ? (
-                        <p className="text-gray-600 italic border-t pt-2">
-                          → {transcript.translatedText}
-                        </p>
-                      ) : null}
-                    </div>
+                  <div key={index} className="py-3">
+                    <p className="text-gray-900 text-sm leading-relaxed">
+                      {transcript.originalText}
+                      {"isPartial" in transcript ? "…" : ""}
+                    </p>
                   </div>
                 ))
               )}

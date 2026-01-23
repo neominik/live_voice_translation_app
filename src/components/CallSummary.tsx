@@ -126,49 +126,12 @@ export function CallSummary({ callId, onBack }: CallSummaryProps) {
             <p>No transcript available for this call</p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="divide-y divide-gray-100">
             {transcripts.map((transcript, index) => (
-              <div
-                key={transcript._id}
-                className={`p-6 rounded-xl ${
-                  transcript.speaker === "user"
-                    ? "bg-blue-50 border-l-4 border-blue-500"
-                    : "bg-gray-50 border-l-4 border-gray-500"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-3">
-                    <span className="font-semibold text-gray-900">
-                      {transcript.speaker === "user" ? "You" : "Other Person"}
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      ({transcript.originalLanguage})
-                    </span>
-                  </div>
-                  <span className="text-sm text-gray-400">
-                    {new Date(transcript.timestamp).toLocaleTimeString()}
-                  </span>
-                </div>
-
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-gray-900 font-medium">Original:</p>
-                    <p className="text-gray-800 mt-1">
-                      {transcript.originalText}
-                    </p>
-                  </div>
-
-                  {transcript.translatedText ? (
-                    <div className="border-t pt-3">
-                      <p className="text-gray-700 font-medium">
-                        Translation ({transcript.translatedLanguage}):
-                      </p>
-                      <p className="text-gray-700 mt-1 italic">
-                        {transcript.translatedText}
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
+              <div key={transcript._id} className="py-3">
+                <p className="text-gray-900 text-sm leading-relaxed">
+                  {transcript.originalText}
+                </p>
               </div>
             ))}
           </div>

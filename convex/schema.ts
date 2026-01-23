@@ -31,11 +31,7 @@ const applicationTables = {
     callId: v.id("calls"),
     userId: v.id("users"),
     timestamp: v.number(),
-    speaker: v.union(v.literal("user"), v.literal("other")),
     originalText: v.string(),
-    originalLanguage: v.string(),
-    translatedText: v.string(),
-    translatedLanguage: v.string(),
     confidence: v.optional(v.number()),
   })
     .index("by_call", ["callId"])
