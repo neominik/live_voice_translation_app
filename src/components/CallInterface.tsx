@@ -55,6 +55,8 @@ Do not add commentary, summaries, or explanations.`,
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   const isEndingCallRef = useRef(false);
+  const outputTranscriptRef = useRef("");
+  const outputTranscriptResponseIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Start call timer
@@ -196,7 +198,6 @@ Do not add commentary, summaries, or explanations.`,
           }
           if (
             payload.type === "response.output_text.delta" ||
-            payload.type === "response.output_audio_transcript.delta" ||
             payload.type === "input_audio_transcript.delta"
           ) {
             const deltaText = payload.delta ?? "";
@@ -204,9 +205,7 @@ Do not add commentary, summaries, or explanations.`,
               return;
             }
             const speaker =
-              payload.type === "input_audio_transcript.delta"
-                ? "user"
-                : "other";
+              payload.type === "input_audio_transcript.delta" ? "user" : "other";
             setPartialTranscript((prev) => {
               if (!prev || prev.speaker !== speaker) {
                 return {
@@ -219,6 +218,67 @@ Do not add commentary, summaries, or explanations.`,
                 ...prev,
                 text: `${prev.text}${deltaText}`,
               };
+            });
+            return;
+          }
+
+          if (payload.type === "response.output_audio_transcript.delta") {
+            const deltaText = payload.delta ?? "";
+            if (!deltaText) {
+              return;
+            }
+            const responseId = payload.response_id ?? payload.response?.id ?? null;
+            if (responseId && responseId !== outputTranscriptResponseIdRef.current) {
+              outputTranscriptResponseIdRef.current = responseId;
+              outputTranscriptRef.current = "";
+            }
+            outputTranscriptRef.current = `${outputTranscriptRef.current}${deltaText}`;
+            setPartialTranscript({
+              speaker: "other",
+              text: outputTranscriptRef.current,
+              timestamp: Date.now(),
+            });
+            return;
+          }
+
+          if (payload.type === "response.output_audio_transcript.done") {
+            const responseId = payload.response_id ?? payload.response?.id ?? null;
+            if (responseId && responseId !== outputTranscriptResponseIdRef.current) {
+              outputTranscriptResponseIdRef.current = responseId;
+            }
+            const finalText =
+              payload.transcript ?? payload.text ?? outputTranscriptRef.current;
+            outputTranscriptRef.current = "";
+            outputTranscriptResponseIdRef.current = null;
+
+            if (!finalText) {
+              return;
+            }
+
+            setPartialTranscript((prev) =>
+              prev && prev.speaker === "other" ? null : prev,
+            );
+
+            const timestamp = Date.now();
+
+            setTranscripts((prev) => [
+              ...prev,
+              {
+                speaker: "other",
+                originalText: finalText,
+                translatedText: "",
+                timestamp,
+              },
+            ]);
+
+            void addTranscript({
+              callId,
+              speaker: "other",
+              originalText: finalText,
+              originalLanguage: secondaryLanguage,
+              translatedText: "",
+              translatedLanguage: primaryLanguage,
+              timestamp,
             });
             return;
           }
