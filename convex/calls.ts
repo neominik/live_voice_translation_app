@@ -17,6 +17,7 @@ export const startCall = mutation({
     const callId = await ctx.db.insert("calls", {
       userId,
       title: `${args.primaryLanguage} ↔ ${args.secondaryLanguage} Call`,
+      summaryText: `${args.primaryLanguage} ↔ ${args.secondaryLanguage} Call`,
       primaryLanguage: args.primaryLanguage,
       secondaryLanguage: args.secondaryLanguage,
       duration: 0,
@@ -59,13 +60,23 @@ export const updateCallSummary = internalMutation({
     callId: v.id("calls"),
     summary: v.string(),
     keyPoints: v.array(v.string()),
+    actionItems: v.array(v.string()),
     title: v.string(),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.callId, {
       summary: args.summary,
       keyPoints: args.keyPoints,
+      actionItems: args.actionItems,
       title: args.title,
+      summaryText: [
+        args.title,
+        args.summary,
+        ...args.keyPoints,
+        ...args.actionItems,
+      ]
+        .filter(Boolean)
+        .join(" "),
     });
   },
 });
@@ -115,11 +126,15 @@ export const listCalls = query({
     }
 
     if (args.primaryLanguage) {
-      query = query.filter((q) => q.eq(q.field("primaryLanguage"), args.primaryLanguage!));
+      query = query.filter((q) =>
+        q.eq(q.field("primaryLanguage"), args.primaryLanguage!),
+      );
     }
 
     if (args.secondaryLanguage) {
-      query = query.filter((q) => q.eq(q.field("secondaryLanguage"), args.secondaryLanguage!));
+      query = query.filter((q) =>
+        q.eq(q.field("secondaryLanguage"), args.secondaryLanguage!),
+      );
     }
 
     return await query.paginate(args.paginationOpts);
@@ -132,6 +147,8 @@ export const searchCalls = query({
     paginationOpts: paginationOptsValidator,
     primaryLanguage: v.optional(v.string()),
     secondaryLanguage: v.optional(v.string()),
+    dateFrom: v.optional(v.number()),
+    dateTo: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -139,10 +156,12 @@ export const searchCalls = query({
       throw new Error("Not authenticated");
     }
 
-    let query = ctx.db
+    const callSearch = await ctx.db
       .query("calls")
       .withSearchIndex("search_content", (q) => {
-        let baseQuery = q.search("title", args.searchTerm).eq("userId", userId);
+        let baseQuery = q
+          .search("summaryText", args.searchTerm)
+          .eq("userId", userId);
         if (args.primaryLanguage) {
           baseQuery = baseQuery.eq("primaryLanguage", args.primaryLanguage);
         }
@@ -150,8 +169,58 @@ export const searchCalls = query({
           baseQuery = baseQuery.eq("secondaryLanguage", args.secondaryLanguage);
         }
         return baseQuery;
-      });
+      })
+      .collect();
 
-    return await query.paginate(args.paginationOpts);
+    const transcriptMatches = await ctx.db
+      .query("transcripts")
+      .withSearchIndex("search_transcript", (q) =>
+        q.search("originalText", args.searchTerm).eq("userId", userId),
+      )
+      .collect();
+
+    const transcriptCallIds = Array.from(
+      new Set(transcriptMatches.map((match) => match.callId)),
+    );
+
+    const transcriptCalls = await Promise.all(
+      transcriptCallIds.map((callId) => ctx.db.get(callId)),
+    );
+
+    const combined = [...callSearch, ...transcriptCalls]
+      .filter((call): call is NonNullable<typeof call> => Boolean(call))
+      .filter((call) => call.userId === userId)
+      .filter((call) =>
+        args.primaryLanguage
+          ? call.primaryLanguage === args.primaryLanguage
+          : true,
+      )
+      .filter((call) =>
+        args.secondaryLanguage
+          ? call.secondaryLanguage === args.secondaryLanguage
+          : true,
+      )
+      .filter((call) =>
+        args.dateFrom ? call.startedAt >= args.dateFrom : true,
+      )
+      .filter((call) => (args.dateTo ? call.startedAt <= args.dateTo : true))
+      .reduce(
+        (acc, call) => {
+          if (!acc.some((existing) => existing._id === call._id)) {
+            acc.push(call);
+          }
+          return acc;
+        },
+        [] as typeof callSearch,
+      )
+      .sort((a, b) => b.startedAt - a.startedAt);
+
+    const page = combined.slice(0, args.paginationOpts.numItems);
+
+    return {
+      page,
+      isDone: page.length >= combined.length,
+      continueCursor: null,
+    };
   },
 });

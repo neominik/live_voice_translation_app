@@ -1,20 +1,38 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQuery } from "convex/react";
 import { CallInterface } from "./CallInterface";
 import { CallHistory } from "./CallHistory";
 import { LanguageSelector } from "./LanguageSelector";
 import { CallSummary } from "./CallSummary";
 import { Id } from "../../convex/_generated/dataModel";
+import { api } from "../../convex/_generated/api";
 
 type View = "home" | "call" | "history" | "summary";
 
 export function VoiceTranslationApp() {
   const [currentView, setCurrentView] = useState<View>("home");
   const [activeCallId, setActiveCallId] = useState<Id<"calls"> | null>(null);
-  const [selectedCallId, setSelectedCallId] = useState<Id<"calls"> | null>(null);
+  const [selectedCallId, setSelectedCallId] = useState<Id<"calls"> | null>(
+    null,
+  );
   const [selectedLanguages, setSelectedLanguages] = useState({
     primary: "English",
     secondary: "Spanish",
   });
+  const [hasInitializedSettings, setHasInitializedSettings] = useState(false);
+  const userSettings = useQuery(api.userSettings.getUserSettings);
+
+  useEffect(() => {
+    if (!userSettings || hasInitializedSettings) {
+      return;
+    }
+
+    setSelectedLanguages({
+      primary: userSettings.preferredPrimaryLanguage,
+      secondary: userSettings.preferredSecondaryLanguage,
+    });
+    setHasInitializedSettings(true);
+  }, [userSettings, hasInitializedSettings]);
 
   const handleStartCall = (callId: Id<"calls">) => {
     setActiveCallId(callId);
@@ -43,10 +61,15 @@ export function VoiceTranslationApp() {
             onEndCall={handleEndCall}
           />
         ) : null;
-      
+
       case "history":
-        return <CallHistory onViewCall={handleViewCall} onBack={() => setCurrentView("home")} />;
-      
+        return (
+          <CallHistory
+            onViewCall={handleViewCall}
+            onBack={() => setCurrentView("home")}
+          />
+        );
+
       case "summary":
         return selectedCallId ? (
           <CallSummary
@@ -54,7 +77,7 @@ export function VoiceTranslationApp() {
             onBack={() => setCurrentView("history")}
           />
         ) : null;
-      
+
       default:
         return (
           <LanguageSelector

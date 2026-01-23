@@ -6,19 +6,25 @@ const applicationTables = {
   calls: defineTable({
     userId: v.id("users"),
     title: v.string(),
+    summaryText: v.string(),
     primaryLanguage: v.string(),
     secondaryLanguage: v.string(),
     duration: v.number(), // in seconds
-    status: v.union(v.literal("active"), v.literal("completed"), v.literal("failed")),
+    status: v.union(
+      v.literal("active"),
+      v.literal("completed"),
+      v.literal("failed"),
+    ),
     summary: v.optional(v.string()),
     keyPoints: v.optional(v.array(v.string())),
+    actionItems: v.optional(v.array(v.string())),
     startedAt: v.number(),
     endedAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
     .index("by_user_and_date", ["userId", "startedAt"])
     .searchIndex("search_content", {
-      searchField: "title",
+      searchField: "summaryText",
       filterFields: ["userId", "primaryLanguage", "secondaryLanguage"],
     }),
 

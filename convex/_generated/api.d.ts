@@ -12,6 +12,7 @@ import type * as ai from "../ai.js";
 import type * as auth from "../auth.js";
 import type * as calls from "../calls.js";
 import type * as http from "../http.js";
+import type * as realtime from "../realtime.js";
 import type * as router from "../router.js";
 import type * as transcripts from "../transcripts.js";
 import type * as userSettings from "../userSettings.js";
@@ -27,6 +28,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   calls: typeof calls;
   http: typeof http;
+  realtime: typeof realtime;
   router: typeof router;
   transcripts: typeof transcripts;
   userSettings: typeof userSettings;

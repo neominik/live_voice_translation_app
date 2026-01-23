@@ -11,6 +11,7 @@ export const addTranscript = mutation({
     translatedText: v.string(),
     translatedLanguage: v.string(),
     confidence: v.optional(v.number()),
+    timestamp: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -26,7 +27,7 @@ export const addTranscript = mutation({
     return await ctx.db.insert("transcripts", {
       callId: args.callId,
       userId,
-      timestamp: Date.now(),
+      timestamp: args.timestamp ?? Date.now(),
       speaker: args.speaker,
       originalText: args.originalText,
       originalLanguage: args.originalLanguage,
@@ -77,7 +78,7 @@ export const searchTranscripts = query({
     return await ctx.db
       .query("transcripts")
       .withSearchIndex("search_transcript", (q) =>
-        q.search("originalText", args.searchTerm).eq("callId", args.callId)
+        q.search("originalText", args.searchTerm).eq("callId", args.callId),
       )
       .collect();
   },

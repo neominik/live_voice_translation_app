@@ -43,8 +43,18 @@ export function CallSummary({ callId, onBack }: CallSummaryProps) {
           onClick={onBack}
           className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
           <span>Back to History</span>
         </button>
@@ -52,29 +62,53 @@ export function CallSummary({ callId, onBack }: CallSummaryProps) {
         <div className="flex items-center space-x-6 text-gray-600">
           <span>{formatDate(call.startedAt)}</span>
           <span>{formatDuration(call.duration)}</span>
-          <span>{call.primaryLanguage} ↔ {call.secondaryLanguage}</span>
+          <span>
+            {call.primaryLanguage} ↔ {call.secondaryLanguage}
+          </span>
         </div>
       </div>
 
       {/* Summary Section */}
       {call.summary && (
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Call Summary</h2>
-          
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">
+            Call Summary
+          </h2>
+
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Overview</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                Overview
+              </h3>
               <p className="text-gray-700 leading-relaxed">{call.summary}</p>
             </div>
 
             {call.keyPoints && call.keyPoints.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Key Points</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  Key Points
+                </h3>
                 <ul className="space-y-2">
                   {call.keyPoints.map((point, index) => (
                     <li key={index} className="flex items-start space-x-3">
                       <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                       <span className="text-gray-700">{point}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {call.actionItems && call.actionItems.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  Action Items
+                </h3>
+                <ul className="space-y-2">
+                  {call.actionItems.map((item, index) => (
+                    <li key={index} className="flex items-start space-x-3">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <span className="text-gray-700">{item}</span>
                     </li>
                   ))}
                 </ul>
@@ -86,12 +120,24 @@ export function CallSummary({ callId, onBack }: CallSummaryProps) {
 
       {/* Full Transcript */}
       <div className="bg-white rounded-2xl shadow-xl p-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Full Transcript</h2>
-        
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">
+          Full Transcript
+        </h2>
+
         {!transcripts || transcripts.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
-            <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <svg
+              className="w-16 h-16 mx-auto mb-4 text-gray-300"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
             </svg>
             <p>No transcript available for this call</p>
           </div>
@@ -119,17 +165,25 @@ export function CallSummary({ callId, onBack }: CallSummaryProps) {
                     {new Date(transcript.timestamp).toLocaleTimeString()}
                   </span>
                 </div>
-                
+
                 <div className="space-y-3">
                   <div>
                     <p className="text-gray-900 font-medium">Original:</p>
-                    <p className="text-gray-800 mt-1">{transcript.originalText}</p>
+                    <p className="text-gray-800 mt-1">
+                      {transcript.originalText}
+                    </p>
                   </div>
-                  
-                  <div className="border-t pt-3">
-                    <p className="text-gray-700 font-medium">Translation ({transcript.translatedLanguage}):</p>
-                    <p className="text-gray-700 mt-1 italic">{transcript.translatedText}</p>
-                  </div>
+
+                  {transcript.translatedText ? (
+                    <div className="border-t pt-3">
+                      <p className="text-gray-700 font-medium">
+                        Translation ({transcript.translatedLanguage}):
+                      </p>
+                      <p className="text-gray-700 mt-1 italic">
+                        {transcript.translatedText}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ))}

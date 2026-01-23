@@ -8,15 +8,40 @@ interface CallHistoryProps {
   onBack: () => void;
 }
 
+const LANGUAGES = [
+  "English",
+  "Spanish",
+  "French",
+  "German",
+  "Italian",
+  "Portuguese",
+  "Russian",
+  "Chinese",
+  "Japanese",
+  "Korean",
+  "Arabic",
+  "Hindi",
+  "Dutch",
+  "Swedish",
+  "Norwegian",
+  "Danish",
+  "Finnish",
+  "Polish",
+];
+
 export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [languageFilter, setLanguageFilter] = useState("");
+  const [secondaryLanguageFilter, setSecondaryLanguageFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
+  const [dateToFilter, setDateToFilter] = useState("");
 
   const callsQuery = useQuery(api.calls.listCalls, {
     paginationOpts: { numItems: 20, cursor: null },
     primaryLanguage: languageFilter || undefined,
+    secondaryLanguage: secondaryLanguageFilter || undefined,
     dateFrom: dateFilter ? new Date(dateFilter).getTime() : undefined,
+    dateTo: dateToFilter ? new Date(dateToFilter).getTime() : undefined,
   });
 
   const searchResults = useQuery(
@@ -26,8 +51,11 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
           searchTerm,
           paginationOpts: { numItems: 20, cursor: null },
           primaryLanguage: languageFilter || undefined,
+          secondaryLanguage: secondaryLanguageFilter || undefined,
+          dateFrom: dateFilter ? new Date(dateFilter).getTime() : undefined,
+          dateTo: dateToFilter ? new Date(dateToFilter).getTime() : undefined,
         }
-      : "skip"
+      : "skip",
   );
 
   const calls = searchTerm ? searchResults?.page : callsQuery?.page;
@@ -57,19 +85,31 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
             onClick={onBack}
             className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
             </svg>
             <span>Back to Home</span>
           </button>
           <h1 className="text-3xl font-bold text-gray-900">Call History</h1>
-          <p className="text-gray-600">View and search your past translation calls</p>
+          <p className="text-gray-600">
+            View and search your past translation calls
+          </p>
         </div>
       </div>
 
       {/* Filters */}
       <div className="bg-white rounded-2xl shadow-xl p-6 mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Search Calls
@@ -84,7 +124,7 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Language
+              Primary Language
             </label>
             <select
               value={languageFilter}
@@ -92,10 +132,28 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
               className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
             >
               <option value="">All Languages</option>
-              <option value="English">English</option>
-              <option value="Spanish">Spanish</option>
-              <option value="French">French</option>
-              <option value="German">German</option>
+              {LANGUAGES.map((language) => (
+                <option key={language} value={language}>
+                  {language}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Secondary Language
+            </label>
+            <select
+              value={secondaryLanguageFilter}
+              onChange={(e) => setSecondaryLanguageFilter(e.target.value)}
+              className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+            >
+              <option value="">All Languages</option>
+              {LANGUAGES.map((language) => (
+                <option key={language} value={language}>
+                  {language}
+                </option>
+              ))}
             </select>
           </div>
           <div>
@@ -106,6 +164,17 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
               type="date"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
+              className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Date To
+            </label>
+            <input
+              type="date"
+              value={dateToFilter}
+              onChange={(e) => setDateToFilter(e.target.value)}
               className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
             />
           </div>
@@ -120,11 +189,25 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
           </div>
         ) : calls.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
-            <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+            <svg
+              className="w-16 h-16 mx-auto mb-4 text-gray-300"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+              />
             </svg>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No calls found</h3>
-            <p className="text-gray-600">Start your first translation call to see it here</p>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              No calls found
+            </h3>
+            <p className="text-gray-600">
+              Start your first translation call to see it here
+            </p>
           </div>
         ) : (
           calls.map((call) => (
@@ -144,8 +227,8 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
                         call.status === "completed"
                           ? "bg-green-100 text-green-800"
                           : call.status === "active"
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-red-100 text-red-800"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-red-100 text-red-800"
                       }`}
                     >
                       {call.status}
@@ -153,31 +236,75 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
                   </div>
                   <div className="flex items-center space-x-6 text-sm text-gray-600">
                     <span className="flex items-center space-x-1">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+                        />
                       </svg>
-                      <span>{call.primaryLanguage} ↔ {call.secondaryLanguage}</span>
+                      <span>
+                        {call.primaryLanguage} ↔ {call.secondaryLanguage}
+                      </span>
                     </span>
                     <span className="flex items-center space-x-1">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
                       </svg>
                       <span>{formatDuration(call.duration)}</span>
                     </span>
                     <span className="flex items-center space-x-1">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0h6m-6 0l-2 2m8-2l2 2m-2-2v12a2 2 0 01-2 2H8a2 2 0 01-2-2V9" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0h6m-6 0l-2 2m8-2l2 2m-2-2v12a2 2 0 01-2 2H8a2 2 0 01-2-2V9"
+                        />
                       </svg>
                       <span>{formatDate(call.startedAt)}</span>
                     </span>
                   </div>
                   {call.summary && (
-                    <p className="mt-2 text-gray-700 line-clamp-2">{call.summary}</p>
+                    <p className="mt-2 text-gray-700 line-clamp-2">
+                      {call.summary}
+                    </p>
                   )}
                 </div>
                 <div className="ml-4">
-                  <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <svg
+                    className="w-6 h-6 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
                   </svg>
                 </div>
               </div>
