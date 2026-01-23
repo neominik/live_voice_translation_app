@@ -98,22 +98,6 @@ export function CallSummary({ callId, onBack }: CallSummaryProps) {
                 </ul>
               </div>
             )}
-
-            {call.actionItems && call.actionItems.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                  Action Items
-                </h3>
-                <ul className="space-y-2">
-                  {call.actionItems.map((item, index) => (
-                    <li key={index} className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                      <span className="text-gray-700">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
         </div>
       )}

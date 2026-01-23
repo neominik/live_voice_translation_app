@@ -32,7 +32,6 @@ Analyze this translated conversation and provide:
 1. A concise title (max 50 characters)
 2. A brief summary (2-3 sentences)
 3. Key information (bullet points)
-4. Action items (bullet points)
 
 Conversation:
 ${conversationText}
@@ -41,8 +40,7 @@ Respond in JSON format:
 {
   "title": "...",
   "summary": "...",
-  "keyPoints": ["...", "..."],
-  "actionItems": ["...", "..."]
+  "keyPoints": ["...", "..."]
 }`;
 
     try {
@@ -63,16 +61,22 @@ Respond in JSON format:
       );
 
       const data = await response.json();
-      const result = JSON.parse(data.choices[0].message.content);
+      const rawContent = data.choices[0].message.content ?? "";
+      const sanitizedContent = rawContent
+        .replace(/```json\s*/g, "")
+        .replace(/```/g, "")
+        .trim();
+      const jsonMatch = sanitizedContent.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error("No JSON object found in summary response");
+      }
+      const result = JSON.parse(jsonMatch[0]);
 
       await ctx.runMutation(internal.calls.updateCallSummary, {
         callId: args.callId,
         title: result.title,
         summary: result.summary,
         keyPoints: Array.isArray(result.keyPoints) ? result.keyPoints : [],
-        actionItems: Array.isArray(result.actionItems)
-          ? result.actionItems
-          : [],
       });
 
       return result;

@@ -17,7 +17,6 @@ const applicationTables = {
     ),
     summary: v.optional(v.string()),
     keyPoints: v.optional(v.array(v.string())),
-    actionItems: v.optional(v.array(v.string())),
     startedAt: v.number(),
     endedAt: v.optional(v.number()),
   })

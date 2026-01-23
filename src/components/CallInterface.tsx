@@ -23,6 +23,7 @@ export function CallInterface({
   >("idle");
   const [isMuted, setIsMuted] = useState(false);
   const [isEndingCall, setIsEndingCall] = useState(false);
+  const [needsAudioResume, setNeedsAudioResume] = useState(false);
   const [transcripts, setTranscripts] = useState<
     Array<{
       speaker: "user" | "other";
@@ -43,9 +44,27 @@ export function CallInterface({
   const addTranscript = useMutation(api.transcripts.addTranscript);
 
   const promptRef = useRef(
-    `You are a live interpreter between ${primaryLanguage} and ${secondaryLanguage}.
-After anyone speaks, respond only with the translation in the other language.
-Do not add commentary, summaries, or explanations.`,
+    `# Role & Objective
+You are a live interpreter between ${primaryLanguage} and ${secondaryLanguage}.
+Your job is to translate EVERYTHING the speaker says in the current turn.
+
+# Instructions / Rules
+- Translate the FULL utterance, not just the last sentence or clause.
+- Preserve the original order of sentences and meaning.
+- Do not summarize, omit, or compress. Translate all sentences.
+- Output only the translation, no commentary.
+- If you are interrupted mid-translation, resume and restate the unfinished part before translating the new input.
+
+# Output Formatting
+- If the speaker uses multiple sentences, output multiple sentences in the translation.
+- Keep sentence boundaries clear (use punctuation, not line breaks).
+
+# Examples (use as pattern, do not copy verbatim)
+Input (${primaryLanguage}): “Ich komme heute später. Der Zug ist verspätet.”
+Output (${secondaryLanguage}): “I’ll be late today. The train is delayed.”
+
+Input (${secondaryLanguage}): “We should meet at five. Also, bring the documents.”
+Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerdem die Dokumente mit.”`,
   );
 
   const startTimeRef = useRef(Date.now());
@@ -57,13 +76,10 @@ Do not add commentary, summaries, or explanations.`,
   const isEndingCallRef = useRef(false);
   const outputTranscriptRef = useRef("");
   const outputTranscriptResponseIdRef = useRef<string | null>(null);
+  const hasStartedTimerRef = useRef(false);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
-    // Start call timer
-    intervalRef.current = setInterval(() => {
-      setCallDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
-    }, 1000);
-
     startRealtimeSession().catch(console.error);
 
     return () => {
@@ -73,6 +89,42 @@ Do not add commentary, summaries, or explanations.`,
       void stopRealtimeSession();
     };
   }, []);
+
+  useEffect(() => {
+    if (connectionState !== "connected") {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      return;
+    }
+
+    if (!hasStartedTimerRef.current) {
+      hasStartedTimerRef.current = true;
+      startTimeRef.current = Date.now();
+      setCallDuration(0);
+    }
+
+    intervalRef.current = setInterval(() => {
+      setCallDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
+    }, 1000);
+
+    if (remoteAudioRef.current && remoteStreamRef.current) {
+      if (remoteAudioRef.current.srcObject !== remoteStreamRef.current) {
+        remoteAudioRef.current.srcObject = remoteStreamRef.current;
+      }
+      void remoteAudioRef.current.play().catch(() => {
+        setNeedsAudioResume(true);
+      });
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [connectionState]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -135,7 +187,32 @@ Do not add commentary, summaries, or explanations.`,
         const [remoteStream] = event.streams;
         if (remoteAudioRef.current && remoteStream) {
           remoteAudioRef.current.srcObject = remoteStream;
-          void remoteAudioRef.current.play();
+          void remoteAudioRef.current.play().catch(() => {
+            setNeedsAudioResume(true);
+          });
+        }
+        if (!remoteStream && event.track) {
+          const stream = new MediaStream([event.track]);
+          remoteStreamRef.current = stream;
+          if (remoteAudioRef.current) {
+            remoteAudioRef.current.srcObject = stream;
+            void remoteAudioRef.current.play().catch(() => {
+              setNeedsAudioResume(true);
+            });
+          }
+        } else if (remoteStream) {
+          remoteStreamRef.current = remoteStream;
+        }
+
+        if (event.track) {
+          event.track.onunmute = () => {
+            if (remoteAudioRef.current) {
+              remoteAudioRef.current.muted = false;
+              void remoteAudioRef.current.play().catch(() => {
+                setNeedsAudioResume(true);
+              });
+            }
+          };
         }
       };
 
@@ -171,7 +248,7 @@ Do not add commentary, summaries, or explanations.`,
             type: "session.update",
             session: {
               type: "realtime",
-              model: "gpt-realtime-mini",
+              model: "gpt-realtime",
               instructions: promptRef.current,
               audio: {
                 output: {
@@ -205,7 +282,9 @@ Do not add commentary, summaries, or explanations.`,
               return;
             }
             const speaker =
-              payload.type === "input_audio_transcript.delta" ? "user" : "other";
+              payload.type === "input_audio_transcript.delta"
+                ? "user"
+                : "other";
             setPartialTranscript((prev) => {
               if (!prev || prev.speaker !== speaker) {
                 return {
@@ -227,8 +306,12 @@ Do not add commentary, summaries, or explanations.`,
             if (!deltaText) {
               return;
             }
-            const responseId = payload.response_id ?? payload.response?.id ?? null;
-            if (responseId && responseId !== outputTranscriptResponseIdRef.current) {
+            const responseId =
+              payload.response_id ?? payload.response?.id ?? null;
+            if (
+              responseId &&
+              responseId !== outputTranscriptResponseIdRef.current
+            ) {
               outputTranscriptResponseIdRef.current = responseId;
               outputTranscriptRef.current = "";
             }
@@ -242,8 +325,12 @@ Do not add commentary, summaries, or explanations.`,
           }
 
           if (payload.type === "response.output_audio_transcript.done") {
-            const responseId = payload.response_id ?? payload.response?.id ?? null;
-            if (responseId && responseId !== outputTranscriptResponseIdRef.current) {
+            const responseId =
+              payload.response_id ?? payload.response?.id ?? null;
+            if (
+              responseId &&
+              responseId !== outputTranscriptResponseIdRef.current
+            ) {
               outputTranscriptResponseIdRef.current = responseId;
             }
             const finalText =
@@ -448,6 +535,12 @@ Do not add commentary, summaries, or explanations.`,
     setIsMuted(false);
     setIsEndingCall(false);
     isEndingCallRef.current = false;
+    setNeedsAudioResume(false);
+    hasStartedTimerRef.current = false;
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
   };
 
   const toggleMute = () => {
@@ -461,6 +554,25 @@ Do not add commentary, summaries, or explanations.`,
       track.enabled = !nextMuted;
     });
     setIsMuted(nextMuted);
+  };
+
+  const resumeAudioPlayback = () => {
+    if (!remoteAudioRef.current) {
+      return;
+    }
+
+    if (!remoteAudioRef.current.srcObject && remoteStreamRef.current) {
+      remoteAudioRef.current.srcObject = remoteStreamRef.current;
+    }
+    remoteAudioRef.current.muted = false;
+    remoteAudioRef.current
+      .play()
+      .then(() => {
+        setNeedsAudioResume(false);
+      })
+      .catch(() => {
+        setNeedsAudioResume(true);
+      });
   };
 
   const handleEndCall = async () => {
@@ -479,146 +591,172 @@ Do not add commentary, summaries, or explanations.`,
     }
   };
 
+  const isConnecting = connectionState !== "connected";
+  const isError = connectionState === "error";
+
   return (
     <div className="max-w-4xl mx-auto p-6 h-screen flex flex-col">
-      {/* Header */}
-      <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              Live Translation
-            </h2>
-            <p className="text-gray-600">
-              {primaryLanguage} ↔ {secondaryLanguage}
-            </p>
-          </div>
-          <div className="text-right">
-            <div className="text-3xl font-mono font-bold text-blue-600">
-              {formatDuration(callDuration)}
-            </div>
-            <div className="text-sm text-gray-500">Call Duration</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Transcript Area */}
-      <div className="flex-1 bg-white rounded-2xl shadow-xl p-6 mb-6 overflow-hidden flex flex-col">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Live Transcript
-        </h3>
-        <div className="flex-1 overflow-y-auto space-y-4">
-          {transcripts.length === 0 ? (
-            <div className="text-center text-gray-500 py-12">
-              <svg
-                className="w-16 h-16 mx-auto mb-4 text-gray-300"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                />
-              </svg>
-              <p>Start speaking to see live translations</p>
-            </div>
-          ) : (
-            [
-              ...transcripts,
-              ...(partialTranscript
-                ? [
-                    {
-                      speaker: partialTranscript.speaker,
-                      originalText: partialTranscript.text,
-                      translatedText: "",
-                      timestamp: partialTranscript.timestamp,
-                      isPartial: true,
-                    },
-                  ]
-                : []),
-            ].map((transcript, index) => (
-              <div
-                key={index}
-                className={`p-4 rounded-xl ${
-                  transcript.speaker === "user"
-                    ? "bg-blue-50 border-l-4 border-blue-500 ml-8"
-                    : "bg-gray-50 border-l-4 border-gray-500 mr-8"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-sm text-gray-600">
-                    {transcript.speaker === "user" ? "You" : "Other Person"}
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    {new Date(transcript.timestamp).toLocaleTimeString()}
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-gray-900">
-                    {transcript.originalText}
-                    {"isPartial" in transcript ? "…" : ""}
-                  </p>
-                  {transcript.translatedText ? (
-                    <p className="text-gray-600 italic border-t pt-2">
-                      → {transcript.translatedText}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Controls */}
-      <div className="bg-white rounded-2xl shadow-xl p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3 text-sm text-gray-600">
-            <span className="font-medium">Connection:</span>
-            <div className="flex items-center space-x-2">
+      {isConnecting ? (
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md text-center space-y-6">
+            <div className="flex items-center justify-center space-x-3">
               {connectionState === "connecting" ? (
-                <div className="h-3 w-3 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div>
+                <div className="h-6 w-6 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div>
               ) : (
                 <div
-                  className={`h-3 w-3 rounded-full ${
-                    connectionState === "connected"
-                      ? "bg-green-500"
-                      : connectionState === "error"
-                        ? "bg-red-500"
-                        : "bg-gray-400"
+                  className={`h-4 w-4 rounded-full ${
+                    isError ? "bg-red-500" : "bg-gray-400"
                   }`}
                 ></div>
               )}
-              <span className="capitalize">{connectionState}</span>
+              <span className="text-sm font-medium text-gray-600 capitalize">
+                {connectionState}
+              </span>
             </div>
-          </div>
-
-          {/* Controls */}
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={toggleMute}
-              disabled={connectionState !== "connected"}
-              className={`px-6 py-4 rounded-xl font-semibold text-lg transition-colors ${
-                isMuted
-                  ? "bg-yellow-500 hover:bg-yellow-600 text-white"
-                  : "bg-blue-500 hover:bg-blue-600 text-white"
-              } ${connectionState !== "connected" ? "opacity-60 cursor-not-allowed" : ""}`}
-            >
-              {isMuted ? "Unmute" : "Mute"}
-            </button>
-
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {isError ? "Connection failed" : "Connecting"}
+              </h2>
+              <p className="text-gray-600 mt-2">
+                {isError
+                  ? "We couldn't establish the realtime session."
+                  : "Setting up your live translation session."}
+              </p>
+            </div>
             <button
               onClick={handleEndCall}
-              className="px-8 py-4 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-semibold text-lg transition-colors"
+              className="w-full px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-semibold text-lg transition-colors"
             >
               End Call
             </button>
           </div>
         </div>
-      </div>
-      <audio ref={remoteAudioRef} className="hidden" />
+      ) : (
+        <>
+          {/* Header */}
+          <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Live Translation
+                </h2>
+                <p className="text-gray-600">
+                  {primaryLanguage} ↔ {secondaryLanguage}
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-mono font-bold text-blue-600">
+                  {formatDuration(callDuration)}
+                </div>
+                <div className="text-sm text-gray-500">Call Duration</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Transcript Area */}
+          <div className="flex-1 bg-white rounded-2xl shadow-xl p-6 mb-6 overflow-hidden flex flex-col">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Live Transcript
+            </h3>
+            <div className="flex-1 overflow-y-auto space-y-4">
+              {transcripts.length === 0 ? (
+                <div className="text-center text-gray-500 py-12">
+                  <svg
+                    className="w-16 h-16 mx-auto mb-4 text-gray-300"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                    />
+                  </svg>
+                  <p>Start speaking to see live translations</p>
+                </div>
+              ) : (
+                [
+                  ...transcripts,
+                  ...(partialTranscript
+                    ? [
+                        {
+                          speaker: partialTranscript.speaker,
+                          originalText: partialTranscript.text,
+                          translatedText: "",
+                          timestamp: partialTranscript.timestamp,
+                          isPartial: true,
+                        },
+                      ]
+                    : []),
+                ].map((transcript, index) => (
+                  <div
+                    key={index}
+                    className={`p-4 rounded-xl ${
+                      transcript.speaker === "user"
+                        ? "bg-blue-50 border-l-4 border-blue-500 ml-8"
+                        : "bg-gray-50 border-l-4 border-gray-500 mr-8"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-sm text-gray-600">
+                        {transcript.speaker === "user" ? "You" : "Other Person"}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        {new Date(transcript.timestamp).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-gray-900">
+                        {transcript.originalText}
+                        {"isPartial" in transcript ? "…" : ""}
+                      </p>
+                      {transcript.translatedText ? (
+                        <p className="text-gray-600 italic border-t pt-2">
+                          → {transcript.translatedText}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Controls */}
+          <div className="bg-white rounded-2xl shadow-xl p-6">
+            <div className="flex items-center justify-end space-x-4">
+              {needsAudioResume ? (
+                <button
+                  onClick={resumeAudioPlayback}
+                  className="px-6 py-4 rounded-xl font-semibold text-lg transition-colors bg-amber-500 hover:bg-amber-600 text-white"
+                >
+                  Enable Audio
+                </button>
+              ) : null}
+              <button
+                onClick={toggleMute}
+                className={`px-6 py-4 rounded-xl font-semibold text-lg transition-colors ${
+                  isMuted
+                    ? "bg-yellow-500 hover:bg-yellow-600 text-white"
+                    : "bg-blue-500 hover:bg-blue-600 text-white"
+                }`}
+              >
+                {isMuted ? "Unmute" : "Mute"}
+              </button>
+
+              <button
+                onClick={handleEndCall}
+                className="px-8 py-4 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-semibold text-lg transition-colors"
+              >
+                End Call
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+      <audio ref={remoteAudioRef} className="hidden" autoPlay playsInline />
     </div>
   );
 }

@@ -8,9 +8,27 @@ const buildInterpreterPrompt = (
   primaryLanguage: string,
   secondaryLanguage: string,
 ) => {
-  return `You are a live interpreter between ${primaryLanguage} and ${secondaryLanguage}.
-After anyone speaks, respond only with the translation in the other language.
-Do not add commentary, summaries, or explanations.`;
+  return `# Role & Objective
+You are a live interpreter between ${primaryLanguage} and ${secondaryLanguage}.
+Your job is to translate EVERYTHING the speaker says in the current turn.
+
+# Instructions / Rules
+- Translate the FULL utterance, not just the last sentence or clause.
+- Preserve the original order of sentences and meaning.
+- Do not summarize, omit, or compress. Translate all sentences.
+- Output only the translation, no commentary.
+- If you are interrupted mid-translation, resume and restate the unfinished part before translating the new input.
+
+# Output Formatting
+- If the speaker uses multiple sentences, output multiple sentences in the translation.
+- Keep sentence boundaries clear (use punctuation, not line breaks).
+
+# Examples (use as pattern, do not copy verbatim)
+Input (${primaryLanguage}): “Ich komme heute später. Der Zug ist verspätet.”
+Output (${secondaryLanguage}): “I’ll be late today. The train is delayed.”
+
+Input (${secondaryLanguage}): “We should meet at five. Also, bring the documents.”
+Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerdem die Dokumente mit.”`;
 };
 
 export const createRealtimeSession = action({
@@ -31,7 +49,7 @@ export const createRealtimeSession = action({
 
     const session = {
       type: "realtime",
-      model: "gpt-realtime-mini",
+      model: "gpt-realtime",
       instructions: buildInterpreterPrompt(
         args.primaryLanguage,
         args.secondaryLanguage,

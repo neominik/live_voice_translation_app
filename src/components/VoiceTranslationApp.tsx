@@ -34,6 +34,21 @@ export function VoiceTranslationApp() {
     setHasInitializedSettings(true);
   }, [userSettings, hasInitializedSettings]);
 
+  useEffect(() => {
+    const handleGoHome = () => {
+      if (currentView === "call") {
+        return;
+      }
+      setSelectedCallId(null);
+      setCurrentView("home");
+    };
+
+    window.addEventListener("live-translation:home", handleGoHome);
+    return () => {
+      window.removeEventListener("live-translation:home", handleGoHome);
+    };
+  }, [currentView]);
+
   const handleStartCall = (callId: Id<"calls">) => {
     setActiveCallId(callId);
     setCurrentView("call");

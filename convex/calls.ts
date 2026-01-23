@@ -60,21 +60,14 @@ export const updateCallSummary = internalMutation({
     callId: v.id("calls"),
     summary: v.string(),
     keyPoints: v.array(v.string()),
-    actionItems: v.array(v.string()),
     title: v.string(),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.callId, {
       summary: args.summary,
       keyPoints: args.keyPoints,
-      actionItems: args.actionItems,
       title: args.title,
-      summaryText: [
-        args.title,
-        args.summary,
-        ...args.keyPoints,
-        ...args.actionItems,
-      ]
+      summaryText: [args.title, args.summary, ...args.keyPoints]
         .filter(Boolean)
         .join(" "),
     });
