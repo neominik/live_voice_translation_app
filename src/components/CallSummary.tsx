@@ -127,7 +127,7 @@ export function CallSummary({ callId, onBack }: CallSummaryProps) {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {transcripts.map((transcript, index) => (
+            {transcripts.map((transcript) => (
               <div key={transcript._id} className="py-3">
                 <p className="text-gray-900 text-sm leading-relaxed">
                   {transcript.originalText}

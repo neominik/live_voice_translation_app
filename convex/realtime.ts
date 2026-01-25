@@ -3,6 +3,18 @@ import { v } from "convex/values";
 
 const DEFAULT_VOICE = "marin";
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const getNestedValue = (value: unknown, key: string): unknown =>
+  isRecord(value) ? value[key] : undefined;
+
+const getString = (value: unknown): string | null =>
+  typeof value === "string" ? value : null;
+
+const getNumber = (value: unknown): number | null =>
+  typeof value === "number" ? value : null;
+
 const buildInterpreterPrompt = (
   primaryLanguage: string,
   secondaryLanguage: string,
@@ -79,13 +91,18 @@ export const createRealtimeSession = action({
       );
     }
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     const clientSecret =
-      data.client_secret?.value ?? data.value ?? data.client_secret ?? null;
+      getString(getNestedValue(getNestedValue(data, "client_secret"), "value")) ??
+      getString(getNestedValue(data, "value")) ??
+      getString(getNestedValue(data, "client_secret")) ??
+      null;
     const expiresAt =
-      data.client_secret?.expires_at ??
-      data.expires_at ??
-      data.client_secret?.expiresAt ??
+      getNumber(
+        getNestedValue(getNestedValue(data, "client_secret"), "expires_at"),
+      ) ??
+      getNumber(getNestedValue(data, "expires_at")) ??
+      getNumber(getNestedValue(getNestedValue(data, "client_secret"), "expiresAt")) ??
       null;
 
     if (!clientSecret) {

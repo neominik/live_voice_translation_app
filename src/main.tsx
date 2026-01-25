@@ -5,12 +5,18 @@ import { ConvexProviderWithAuthKit } from "@convex-dev/workos";
 import "./index.css";
 import App from "./App";
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+const {
+  VITE_CONVEX_URL,
+  VITE_WORKOS_CLIENT_ID,
+  VITE_WORKOS_REDIRECT_URI,
+} = import.meta.env;
+
+const convex = new ConvexReactClient(VITE_CONVEX_URL);
 
 createRoot(document.getElementById("root")!).render(
   <AuthKitProvider
-    clientId={import.meta.env.VITE_WORKOS_CLIENT_ID}
-    redirectUri={import.meta.env.VITE_WORKOS_REDIRECT_URI}
+    clientId={VITE_WORKOS_CLIENT_ID}
+    redirectUri={VITE_WORKOS_REDIRECT_URI}
   >
     <ConvexProviderWithAuthKit client={convex} useAuth={useAuth}>
       <App />

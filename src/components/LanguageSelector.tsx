@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
@@ -62,7 +62,7 @@ export function LanguageSelector({
     });
   };
 
-  const handleStartCall = async () => {
+  const startCallFlow = useCallback(async () => {
     if (selectedLanguages.primary === selectedLanguages.secondary) {
       toast.error("Please select different languages for translation");
       return;
@@ -77,7 +77,7 @@ export function LanguageSelector({
 
       const voiceSettings =
         userSettings?.voiceSettings ?? DEFAULT_VOICE_SETTINGS;
-      updateUserSettings({
+      void updateUserSettings({
         preferredPrimaryLanguage: selectedLanguages.primary,
         preferredSecondaryLanguage: selectedLanguages.secondary,
         voiceSettings,
@@ -93,6 +93,10 @@ export function LanguageSelector({
     } finally {
       setIsStarting(false);
     }
+  }, [onStartCall, selectedLanguages, startCall, updateUserSettings, userSettings]);
+
+  const handleStartCall = () => {
+    void startCallFlow();
   };
 
   return (

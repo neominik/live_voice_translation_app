@@ -13,6 +13,14 @@ export default tseslint.config(
     ignores: ["dist", "node_modules", "convex/_generated"],
   },
   js.configs.recommended,
+  {
+    files: ["**/*.{js,cjs,mjs}"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
   ...tseslint.configs.recommendedTypeChecked.map((config) => ({
     ...config,
     files: ["**/*.{ts,tsx}"],

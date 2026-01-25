@@ -1,8 +1,31 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { toast } from "sonner";
+
+type RealtimeMessage = Record<string, unknown> & {
+  type: string;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const parseRealtimeMessage = (data: string): RealtimeMessage | null => {
+  try {
+    const parsed: unknown = JSON.parse(data);
+    if (!isRecord(parsed)) {
+      return null;
+    }
+    if (typeof parsed.type !== "string") {
+      return null;
+    }
+    return parsed as RealtimeMessage;
+  } catch (error) {
+    console.error("Failed to parse realtime payload", error);
+    return null;
+  }
+};
 
 interface CallInterfaceProps {
   callId: Id<"calls">;
@@ -22,7 +45,6 @@ export function CallInterface({
     "idle" | "connecting" | "connected" | "error"
   >("idle");
   const [isMuted, setIsMuted] = useState(false);
-  const [isEndingCall, setIsEndingCall] = useState(false);
   const [needsAudioResume, setNeedsAudioResume] = useState(false);
   const [transcripts, setTranscripts] = useState<
     Array<{
@@ -77,17 +99,6 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
   const outputTranscriptResponseIdRef = useRef<string | null>(null);
   const hasStartedTimerRef = useRef(false);
   const remoteStreamRef = useRef<MediaStream | null>(null);
-
-  useEffect(() => {
-    startRealtimeSession().catch(console.error);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-      void stopRealtimeSession();
-    };
-  }, []);
 
   useEffect(() => {
     if (connectionState !== "connected") {
@@ -151,36 +162,68 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const waitForIceGatheringComplete = (peerConnection: RTCPeerConnection) => {
-    if (peerConnection.iceGatheringState === "complete") {
-      return Promise.resolve();
-    }
+  const waitForIceGatheringComplete = useCallback(
+    (peerConnection: RTCPeerConnection) => {
+      if (peerConnection.iceGatheringState === "complete") {
+        return Promise.resolve();
+      }
 
-    return new Promise<void>((resolve) => {
-      const timeoutId = window.setTimeout(() => {
-        peerConnection.removeEventListener(
-          "icegatheringstatechange",
-          onStateChange,
-        );
-        resolve();
-      }, 5000);
-
-      const onStateChange = () => {
-        if (peerConnection.iceGatheringState === "complete") {
-          window.clearTimeout(timeoutId);
+      return new Promise<void>((resolve) => {
+        const timeoutId = window.setTimeout(() => {
           peerConnection.removeEventListener(
             "icegatheringstatechange",
             onStateChange,
           );
           resolve();
-        }
-      };
+        }, 5000);
 
-      peerConnection.addEventListener("icegatheringstatechange", onStateChange);
-    });
-  };
+        const onStateChange = () => {
+          if (peerConnection.iceGatheringState === "complete") {
+            window.clearTimeout(timeoutId);
+            peerConnection.removeEventListener(
+              "icegatheringstatechange",
+              onStateChange,
+            );
+            resolve();
+          }
+        };
 
-  const startRealtimeSession = async () => {
+        peerConnection.addEventListener(
+          "icegatheringstatechange",
+          onStateChange,
+        );
+      });
+    },
+    [],
+  );
+
+  const stopRealtimeSession = useCallback(() => {
+    isEndingCallRef.current = true;
+    dataChannelRef.current?.close();
+    dataChannelRef.current = null;
+
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => track.stop());
+      localStreamRef.current = null;
+    }
+
+    setConnectionState("idle");
+    setIsMuted(false);
+    isEndingCallRef.current = false;
+    setNeedsAudioResume(false);
+    hasStartedTimerRef.current = false;
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
+  const startRealtimeSession = useCallback(async () => {
     try {
       setConnectionState("connecting");
       const session = await createRealtimeSession({
@@ -287,164 +330,190 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
       };
 
       dataChannel.onmessage = (event) => {
-        try {
-          const payload = JSON.parse(event.data);
-          if (import.meta.env.DEV) {
-            console.debug("Realtime event", payload.type, payload);
+        if (typeof event.data !== "string") {
+          return;
+        }
+        const payload = parseRealtimeMessage(event.data);
+        if (!payload) {
+          return;
+        }
+
+        if (import.meta.env.DEV) {
+          console.debug("Realtime event", payload.type, payload);
+        }
+
+        if (
+          payload.type === "response.output_text.delta" ||
+          payload.type === "input_audio_transcript.delta"
+        ) {
+          const deltaText =
+            typeof payload.delta === "string" ? payload.delta : "";
+          if (!deltaText) {
+            return;
           }
-          if (
-            payload.type === "response.output_text.delta" ||
-            payload.type === "input_audio_transcript.delta"
-          ) {
-            const deltaText = payload.delta ?? "";
-            if (!deltaText) {
-              return;
-            }
-            setPartialTranscript((prev) => {
-              if (!prev) {
-                return {
-                  text: deltaText,
-                  timestamp: Date.now(),
-                };
-              }
+          setPartialTranscript((prev) => {
+            if (!prev) {
               return {
-                ...prev,
-                text: `${prev.text}${deltaText}`,
+                text: deltaText,
+                timestamp: Date.now(),
               };
-            });
-            return;
-          }
-
-          if (payload.type === "response.output_audio_transcript.delta") {
-            const deltaText = payload.delta ?? "";
-            if (!deltaText) {
-              return;
             }
-            const responseId =
-              payload.response_id ?? payload.response?.id ?? null;
-            if (
-              responseId &&
-              responseId !== outputTranscriptResponseIdRef.current
-            ) {
-              outputTranscriptResponseIdRef.current = responseId;
-              outputTranscriptRef.current = "";
-            }
-            outputTranscriptRef.current = `${outputTranscriptRef.current}${deltaText}`;
-            setPartialTranscript({
-              text: outputTranscriptRef.current,
-              timestamp: Date.now(),
-            });
-            return;
-          }
-
-          if (payload.type === "response.output_audio_transcript.done") {
-            const responseId =
-              payload.response_id ?? payload.response?.id ?? null;
-            if (
-              responseId &&
-              responseId !== outputTranscriptResponseIdRef.current
-            ) {
-              outputTranscriptResponseIdRef.current = responseId;
-            }
-            const finalText =
-              payload.transcript ?? payload.text ?? outputTranscriptRef.current;
-            outputTranscriptRef.current = "";
-            outputTranscriptResponseIdRef.current = null;
-
-            if (!finalText) {
-              return;
-            }
-
-            setPartialTranscript(null);
-
-            const timestamp = Date.now();
-
-            setTranscripts((prev) => [
+            return {
               ...prev,
-              {
-                originalText: finalText,
-                timestamp,
-              },
-            ]);
+              text: `${prev.text}${deltaText}`,
+            };
+          });
+          return;
+        }
 
-            void addTranscript({
-              callId,
-              originalText: finalText,
-              timestamp,
-            });
+        if (payload.type === "response.output_audio_transcript.delta") {
+          const deltaText =
+            typeof payload.delta === "string" ? payload.delta : "";
+          if (!deltaText) {
             return;
           }
+          const response = isRecord(payload.response) ? payload.response : null;
+          const responseId =
+            (typeof payload.response_id === "string" &&
+              payload.response_id) ||
+            (typeof response?.id === "string" ? response.id : null);
+          if (
+            responseId &&
+            responseId !== outputTranscriptResponseIdRef.current
+          ) {
+            outputTranscriptResponseIdRef.current = responseId;
+            outputTranscriptRef.current = "";
+          }
+          outputTranscriptRef.current = `${outputTranscriptRef.current}${deltaText}`;
+          setPartialTranscript({
+            text: outputTranscriptRef.current,
+            timestamp: Date.now(),
+          });
+          return;
+        }
 
-          if (payload.type === "response.output_audio.delta") {
+        if (payload.type === "response.output_audio_transcript.done") {
+          const response = isRecord(payload.response) ? payload.response : null;
+          const responseId =
+            (typeof payload.response_id === "string" &&
+              payload.response_id) ||
+            (typeof response?.id === "string" ? response.id : null);
+          if (
+            responseId &&
+            responseId !== outputTranscriptResponseIdRef.current
+          ) {
+            outputTranscriptResponseIdRef.current = responseId;
+          }
+          const transcriptText =
+            typeof payload.transcript === "string" ? payload.transcript : null;
+          const textValue =
+            typeof payload.text === "string" ? payload.text : null;
+          const finalText =
+            transcriptText ?? textValue ?? outputTranscriptRef.current;
+          outputTranscriptRef.current = "";
+          outputTranscriptResponseIdRef.current = null;
+
+          if (!finalText) {
             return;
           }
-
-          const item = payload.item;
-          if (!item) {
-            return;
-          }
-
-          const contentParts = Array.isArray(item.content) ? item.content : [];
-          const text = contentParts
-            .map((part: { type?: string; text?: string }) => {
-              if (!part?.text) return null;
-              if (
-                part.type === "input_text" ||
-                part.type === "output_text" ||
-                part.type === "output_audio_transcript" ||
-                part.type === "input_audio_transcript" ||
-                part.type === "text"
-              ) {
-                return part.text;
-              }
-              return null;
-            })
-            .filter(Boolean)
-            .join(" ")
-            .trim();
-
-          if (payload.type === "conversation.item.added") {
-            if (!text) {
-              return;
-            }
-            setPartialTranscript({
-              text,
-              timestamp: Date.now(),
-            });
-            return;
-          }
-
-          if (payload.type !== "conversation.item.done") {
-            return;
-          }
-
-          if (!text) {
-            return;
-          }
-
-          const eventTimestamp =
-            typeof item.created_at === "number"
-              ? item.created_at * 1000
-              : Date.now();
 
           setPartialTranscript(null);
+
+          const timestamp = Date.now();
 
           setTranscripts((prev) => [
             ...prev,
             {
-              originalText: text,
-              timestamp: eventTimestamp,
+              originalText: finalText,
+              timestamp,
             },
           ]);
 
           void addTranscript({
             callId,
+            originalText: finalText,
+            timestamp,
+          });
+          return;
+        }
+
+        if (payload.type === "response.output_audio.delta") {
+          return;
+        }
+
+        const item = isRecord(payload.item) ? payload.item : null;
+        if (!item) {
+          return;
+        }
+
+        const contentParts = Array.isArray(item.content) ? item.content : [];
+        const text = contentParts
+          .map((part) => {
+            if (!isRecord(part)) {
+              return null;
+            }
+            const partText =
+              typeof part.text === "string" ? part.text : null;
+            const partType =
+              typeof part.type === "string" ? part.type : null;
+            if (!partText) {
+              return null;
+            }
+            if (
+              partType === "input_text" ||
+              partType === "output_text" ||
+              partType === "output_audio_transcript" ||
+              partType === "input_audio_transcript" ||
+              partType === "text" ||
+              !partType
+            ) {
+              return partText;
+            }
+            return null;
+          })
+          .filter((part): part is string => Boolean(part))
+          .join(" ")
+          .trim();
+
+        if (payload.type === "conversation.item.added") {
+          if (!text) {
+            return;
+          }
+          setPartialTranscript({
+            text,
+            timestamp: Date.now(),
+          });
+          return;
+        }
+
+        if (payload.type !== "conversation.item.done") {
+          return;
+        }
+
+        if (!text) {
+          return;
+        }
+
+        const eventTimestamp =
+          typeof item.created_at === "number"
+            ? item.created_at * 1000
+            : Date.now();
+
+        setPartialTranscript(null);
+
+        setTranscripts((prev) => [
+          ...prev,
+          {
             originalText: text,
             timestamp: eventTimestamp,
-          });
-        } catch (error) {
-          console.error("Failed to parse realtime event", error);
-        }
+          },
+        ]);
+
+        void addTranscript({
+          callId,
+          originalText: text,
+          timestamp: eventTimestamp,
+        });
       };
 
       const offer = await peerConnection.createOffer();
@@ -483,7 +552,7 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
         sdp: answerSdp,
       });
     } catch (error) {
-      await stopRealtimeSession();
+      stopRealtimeSession();
       setConnectionState("error");
       if (error instanceof DOMException && error.name === "NotAllowedError") {
         toast.error(
@@ -503,35 +572,26 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
       }
       console.error(error);
     }
-  };
+  }, [
+    addTranscript,
+    callId,
+    createRealtimeSession,
+    primaryLanguage,
+    secondaryLanguage,
+    stopRealtimeSession,
+    waitForIceGatheringComplete,
+  ]);
 
-  const stopRealtimeSession = async () => {
-    isEndingCallRef.current = true;
-    setIsEndingCall(true);
-    dataChannelRef.current?.close();
-    dataChannelRef.current = null;
+  useEffect(() => {
+    void startRealtimeSession();
 
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
-      peerConnectionRef.current = null;
-    }
-
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => track.stop());
-      localStreamRef.current = null;
-    }
-
-    setConnectionState("idle");
-    setIsMuted(false);
-    setIsEndingCall(false);
-    isEndingCallRef.current = false;
-    setNeedsAudioResume(false);
-    hasStartedTimerRef.current = false;
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-  };
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      stopRealtimeSession();
+    };
+  }, [startRealtimeSession, stopRealtimeSession]);
 
   const toggleMute = () => {
     const stream = localStreamRef.current;
@@ -565,13 +625,13 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
       });
   };
 
-  const handleEndCall = async () => {
+  const endCallFlow = useCallback(async () => {
     try {
-      await stopRealtimeSession();
+      stopRealtimeSession();
       await endCall({ callId, duration: callDuration });
 
       // Generate summary in the background
-      generateSummary({ callId }).catch(console.error);
+      void generateSummary({ callId }).catch(console.error);
 
       onEndCall();
       toast.success("Call ended successfully");
@@ -579,6 +639,10 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
       toast.error("Failed to end call");
       console.error(error);
     }
+  }, [callDuration, callId, endCall, generateSummary, onEndCall, stopRealtimeSession]);
+
+  const handleEndCall = () => {
+    void endCallFlow();
   };
 
   const isConnecting = connectionState !== "connected";

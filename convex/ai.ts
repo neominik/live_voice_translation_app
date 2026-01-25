@@ -1,6 +1,76 @@
-import { action, internalAction } from "./_generated/server";
+import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+
+type SummaryResult = {
+  title: string;
+  summary: string;
+  keyPoints: string[];
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const isUnknownArray = (value: unknown): value is unknown[] =>
+  Array.isArray(value);
+
+const parseChatCompletionContent = (data: unknown): string => {
+  if (!isRecord(data)) {
+    throw new Error("Invalid OpenAI response");
+  }
+
+  const choices = isUnknownArray(data.choices) ? data.choices : [];
+  if (choices.length === 0) {
+    throw new Error("OpenAI response missing choices");
+  }
+
+  const first = choices[0];
+  if (!isRecord(first)) {
+    throw new Error("OpenAI response choice is invalid");
+  }
+
+  const message = first.message;
+  if (!isRecord(message)) {
+    return "";
+  }
+
+  const content = message.content;
+  return typeof content === "string" ? content : "";
+};
+
+const parseSummaryResult = (content: string): SummaryResult => {
+  const sanitizedContent = content
+    .replace(/```json\s*/g, "")
+    .replace(/```/g, "")
+    .trim();
+  const jsonMatch = sanitizedContent.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error("No JSON object found in summary response");
+  }
+
+  const parsed: unknown = JSON.parse(jsonMatch[0]);
+  if (!isRecord(parsed)) {
+    throw new Error("Summary response JSON was not an object");
+  }
+
+  const title = parsed.title;
+  const summary = parsed.summary;
+  const keyPoints = parsed.keyPoints;
+
+  if (typeof title !== "string" || typeof summary !== "string") {
+    throw new Error("Summary response missing title or summary");
+  }
+
+  const normalizedKeyPoints = Array.isArray(keyPoints)
+    ? keyPoints.filter((point): point is string => typeof point === "string")
+    : [];
+
+  return {
+    title,
+    summary,
+    keyPoints: normalizedKeyPoints,
+  };
+};
 
 export const generateCallSummary = action({
   args: {
@@ -19,9 +89,7 @@ export const generateCallSummary = action({
     }
 
     const conversationText = transcripts
-      .map((t: any) => {
-        return t.originalText;
-      })
+      .map((transcript) => transcript.originalText)
       .join("\n");
 
     const prompt = `
@@ -57,17 +125,9 @@ Respond in JSON format:
         },
       );
 
-      const data = await response.json();
-      const rawContent = data.choices[0].message.content ?? "";
-      const sanitizedContent = rawContent
-        .replace(/```json\s*/g, "")
-        .replace(/```/g, "")
-        .trim();
-      const jsonMatch = sanitizedContent.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error("No JSON object found in summary response");
-      }
-      const result = JSON.parse(jsonMatch[0]);
+      const data: unknown = await response.json();
+      const rawContent = parseChatCompletionContent(data);
+      const result = parseSummaryResult(rawContent);
 
       await ctx.runMutation(internal.calls.updateCallSummary, {
         callId: args.callId,
@@ -112,8 +172,9 @@ ${args.text}`;
         },
       );
 
-      const data = await response.json();
-      return data.choices[0].message.content.trim();
+      const data: unknown = await response.json();
+      const content = parseChatCompletionContent(data);
+      return content.trim();
     } catch (error) {
       console.error("Translation failed:", error);
       return args.text; // Return original text if translation fails
