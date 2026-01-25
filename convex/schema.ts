@@ -1,10 +1,8 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { authTables } from "@convex-dev/auth/server";
-
 const applicationTables = {
   calls: defineTable({
-    userId: v.id("users"),
+    userId: v.string(),
     title: v.string(),
     summaryText: v.string(),
     primaryLanguage: v.string(),
@@ -29,7 +27,7 @@ const applicationTables = {
 
   transcripts: defineTable({
     callId: v.id("calls"),
-    userId: v.id("users"),
+    userId: v.string(),
     timestamp: v.number(),
     originalText: v.string(),
     confidence: v.optional(v.number()),
@@ -42,7 +40,7 @@ const applicationTables = {
     }),
 
   userSettings: defineTable({
-    userId: v.id("users"),
+    userId: v.string(),
     preferredPrimaryLanguage: v.string(),
     preferredSecondaryLanguage: v.string(),
     voiceSettings: v.object({
@@ -54,6 +52,5 @@ const applicationTables = {
 };
 
 export default defineSchema({
-  ...authTables,
   ...applicationTables,
 });

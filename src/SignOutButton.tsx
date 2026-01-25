@@ -1,10 +1,9 @@
-"use client";
-import { useAuthActions } from "@convex-dev/auth/react";
+import { useAuth } from "@workos-inc/authkit-react";
 import { useConvexAuth } from "convex/react";
 
 export function SignOutButton() {
   const { isAuthenticated } = useConvexAuth();
-  const { signOut } = useAuthActions();
+  const { signOut } = useAuth();
 
   if (!isAuthenticated) {
     return null;

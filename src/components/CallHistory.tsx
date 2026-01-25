@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
@@ -44,6 +44,10 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
     dateTo: dateToFilter ? new Date(dateToFilter).getTime() : undefined,
   });
 
+  const availableCallsQuery = useQuery(api.calls.listCalls, {
+    paginationOpts: { numItems: 1000, cursor: null },
+  });
+
   const searchResults = useQuery(
     api.calls.searchCalls,
     searchTerm
@@ -59,6 +63,23 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
   );
 
   const calls = searchTerm ? searchResults?.page : callsQuery?.page;
+
+  const availableLanguages = useMemo(() => {
+    const usedLanguages = new Set<string>();
+    for (const call of availableCallsQuery?.page ?? []) {
+      usedLanguages.add(call.primaryLanguage);
+      usedLanguages.add(call.secondaryLanguage);
+    }
+
+    const knownLanguages = LANGUAGES.filter((language) =>
+      usedLanguages.has(language),
+    );
+    const customLanguages = Array.from(usedLanguages).filter(
+      (language) => !LANGUAGES.includes(language),
+    );
+
+    return [...knownLanguages, ...customLanguages.sort()];
+  }, [availableCallsQuery?.page]);
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString("en-US", {
@@ -132,7 +153,7 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
               className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
             >
               <option value="">All Languages</option>
-              {LANGUAGES.map((language) => (
+              {availableLanguages.map((language) => (
                 <option key={language} value={language}>
                   {language}
                 </option>
@@ -149,7 +170,7 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
               className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
             >
               <option value="">All Languages</option>
-              {LANGUAGES.map((language) => (
+              {availableLanguages.map((language) => (
                 <option key={language} value={language}>
                   {language}
                 </option>

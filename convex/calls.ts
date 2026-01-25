@@ -1,6 +1,5 @@
 import { v } from "convex/values";
 import { query, mutation, internalMutation } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { paginationOptsValidator } from "convex/server";
 
 export const startCall = mutation({
@@ -9,10 +8,11 @@ export const startCall = mutation({
     secondaryLanguage: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
       throw new Error("Not authenticated");
     }
+    const userId = identity.subject;
 
     const callId = await ctx.db.insert("calls", {
       userId,
@@ -35,10 +35,11 @@ export const endCall = mutation({
     duration: v.number(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
       throw new Error("Not authenticated");
     }
+    const userId = identity.subject;
 
     const call = await ctx.db.get(args.callId);
     if (!call || call.userId !== userId) {
@@ -77,10 +78,11 @@ export const updateCallSummary = internalMutation({
 export const getCall = query({
   args: { callId: v.id("calls") },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
       throw new Error("Not authenticated");
     }
+    const userId = identity.subject;
 
     const call = await ctx.db.get(args.callId);
     if (!call || call.userId !== userId) {
@@ -100,10 +102,11 @@ export const listCalls = query({
     dateTo: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
       throw new Error("Not authenticated");
     }
+    const userId = identity.subject;
 
     let query = ctx.db
       .query("calls")
@@ -144,10 +147,11 @@ export const searchCalls = query({
     dateTo: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
       throw new Error("Not authenticated");
     }
+    const userId = identity.subject;
 
     const callSearch = await ctx.db
       .query("calls")

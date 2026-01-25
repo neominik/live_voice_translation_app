@@ -1,6 +1,5 @@
 import { v } from "convex/values";
 import { query, mutation, internalQuery } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const addTranscript = mutation({
   args: {
@@ -10,10 +9,11 @@ export const addTranscript = mutation({
     timestamp: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
       throw new Error("Not authenticated");
     }
+    const userId = identity.subject;
 
     const call = await ctx.db.get(args.callId);
     if (!call || call.userId !== userId) {
@@ -33,10 +33,11 @@ export const addTranscript = mutation({
 export const getTranscripts = query({
   args: { callId: v.id("calls") },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
       throw new Error("Not authenticated");
     }
+    const userId = identity.subject;
 
     const call = await ctx.db.get(args.callId);
     if (!call || call.userId !== userId) {
@@ -57,10 +58,11 @@ export const searchTranscripts = query({
     searchTerm: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
       throw new Error("Not authenticated");
     }
+    const userId = identity.subject;
 
     const call = await ctx.db.get(args.callId);
     if (!call || call.userId !== userId) {

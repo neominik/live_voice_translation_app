@@ -11,7 +11,8 @@
     "lint": "tsc -p convex -noEmit --pretty false && tsc -p . -noEmit --pretty false && convex dev --once && vite build"
   },
   "dependencies": {
-    "@convex-dev/auth": "^0.0.80",
+    "@convex-dev/workos": "^0.0.1",
+    "@workos-inc/authkit-react": "^0.16.0",
     "clsx": "^2.1.1",
     "convex": "^1.31.2",
     "openai": "^6.16.0",
