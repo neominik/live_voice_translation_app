@@ -8,7 +8,8 @@
     "dev:frontend": "vite --open",
     "dev:backend": "convex dev",
     "build": "vite build",
-    "lint": "tsc -p convex -noEmit --pretty false && tsc -p . -noEmit --pretty false && convex dev --once && vite build"
+    "lint": "tsc -p convex -noEmit --pretty false && tsc -p . -noEmit --pretty false && convex dev --once && vite build",
+    "lint:eslint": "eslint ."
   },
   "dependencies": {
     "@convex-dev/workos": "^0.0.1",
