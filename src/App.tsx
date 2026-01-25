@@ -7,16 +7,16 @@ import { VoiceTranslationApp } from "./components/VoiceTranslationApp";
 
 export default function App() {
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm h-16 flex justify-between items-center border-b shadow-sm px-4">
+    <div className="min-h-screen flex flex-col app-shell">
+      <header className="sticky top-0 z-10 h-16 flex justify-between items-center px-4 app-header">
         <button
           type="button"
           onClick={() => {
             window.dispatchEvent(new CustomEvent("live-translation:home"));
           }}
-          className="text-xl font-semibold text-primary"
+          className="text-xl font-semibold brand"
         >
-          LiveTranslation
+          Live<span className="brand-accent">Translation</span>
         </button>
         <Authenticated>
           <SignOutButton />
@@ -50,14 +50,14 @@ function Content() {
       <Unauthenticated>
         <div className="flex items-center justify-center min-h-[600px] p-8">
           <div className="w-full max-w-md mx-auto">
-            <div className="text-center mb-8">
-              <h1 className="text-4xl font-bold text-primary mb-4">
-                LiveTranslation
+            <div className="text-center mb-8 hero-card p-8">
+              <h1 className="text-4xl font-bold mb-4">
+                Live<span className="brand-accent">Translation</span>
               </h1>
-              <p className="text-xl text-secondary mb-2">
+              <p className="text-lg text-slate-200 mb-2">
                 Real-time Voice Translation
               </p>
-              <p className="text-gray-600">
+              <p className="text-sm text-slate-400">
                 Break language barriers with AI-powered live interpretation
               </p>
             </div>

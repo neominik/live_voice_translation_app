@@ -9,7 +9,7 @@ export function SignInForm() {
         <button className="auth-button" onClick={() => void signIn()}>
           Sign in
         </button>
-        <p className="text-center text-sm text-secondary">
+        <p className="text-center text-sm text-slate-400">
           Sign in to continue.
         </p>
       </div>

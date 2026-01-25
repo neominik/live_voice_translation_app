@@ -14,7 +14,7 @@ export function CallSummary({ callId, onBack }: CallSummaryProps) {
   if (!call) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-300"></div>
       </div>
     );
   }
@@ -41,7 +41,7 @@ export function CallSummary({ callId, onBack }: CallSummaryProps) {
       <div className="mb-8">
         <button
           onClick={onBack}
-          className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4"
+          className="flex items-center space-x-2 text-slate-400 hover:text-slate-200 mb-4"
         >
           <svg
             className="w-5 h-5"
@@ -58,8 +58,8 @@ export function CallSummary({ callId, onBack }: CallSummaryProps) {
           </svg>
           <span>Back to History</span>
         </button>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">{call.title}</h1>
-        <div className="flex items-center space-x-6 text-gray-600">
+        <h1 className="text-3xl font-bold mb-2">{call.title}</h1>
+        <div className="flex items-center space-x-6 text-slate-400">
           <span>{formatDate(call.startedAt)}</span>
           <span>{formatDuration(call.duration)}</span>
           <span>
@@ -70,29 +70,23 @@ export function CallSummary({ callId, onBack }: CallSummaryProps) {
 
       {/* Summary Section */}
       {call.summary && (
-        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">
-            Call Summary
-          </h2>
+        <div className="panel panel-strong p-8 mb-8">
+          <h2 className="text-2xl font-bold mb-6">Call Summary</h2>
 
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                Overview
-              </h3>
-              <p className="text-gray-700 leading-relaxed">{call.summary}</p>
+              <h3 className="text-lg font-semibold mb-3">Overview</h3>
+              <p className="text-slate-200 leading-relaxed">{call.summary}</p>
             </div>
 
             {call.keyPoints && call.keyPoints.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                  Key Points
-                </h3>
+                <h3 className="text-lg font-semibold mb-3">Key Points</h3>
                 <ul className="space-y-2">
                   {call.keyPoints.map((point, index) => (
                     <li key={index} className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                      <span className="text-gray-700">{point}</span>
+                      <div className="w-2 h-2 bg-emerald-300 rounded-full mt-2 flex-shrink-0"></div>
+                      <span className="text-slate-200">{point}</span>
                     </li>
                   ))}
                 </ul>
@@ -103,15 +97,13 @@ export function CallSummary({ callId, onBack }: CallSummaryProps) {
       )}
 
       {/* Full Transcript */}
-      <div className="bg-white rounded-2xl shadow-xl p-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">
-          Full Transcript
-        </h2>
+      <div className="panel p-8">
+        <h2 className="text-2xl font-bold mb-6">Full Transcript</h2>
 
         {!transcripts || transcripts.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12 text-slate-400">
             <svg
-              className="w-16 h-16 mx-auto mb-4 text-gray-300"
+              className="w-16 h-16 mx-auto mb-4 text-slate-500"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -126,10 +118,10 @@ export function CallSummary({ callId, onBack }: CallSummaryProps) {
             <p>No transcript available for this call</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divider-soft">
             {transcripts.map((transcript) => (
               <div key={transcript._id} className="py-3">
-                <p className="text-gray-900 text-sm leading-relaxed">
+                <p className="text-slate-100 text-sm leading-relaxed">
                   {transcript.originalText}
                 </p>
               </div>

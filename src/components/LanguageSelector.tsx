@@ -93,7 +93,13 @@ export function LanguageSelector({
     } finally {
       setIsStarting(false);
     }
-  }, [onStartCall, selectedLanguages, startCall, updateUserSettings, userSettings]);
+  }, [
+    onStartCall,
+    selectedLanguages,
+    startCall,
+    updateUserSettings,
+    userSettings,
+  ]);
 
   const handleStartCall = () => {
     void startCallFlow();
@@ -101,17 +107,15 @@ export function LanguageSelector({
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
+      <div className="panel panel-strong p-8 mb-8">
         <div className="grid md:grid-cols-2 gap-8 items-center">
           {/* Primary Language */}
           <div className="space-y-4">
-            <label className="block text-lg font-semibold text-gray-700">
-              Your Language
-            </label>
+            <label className="block text-lg field-label">Your Language</label>
             <select
               value={selectedLanguages.primary}
               onChange={(e) => handleLanguageChange("primary", e.target.value)}
-              className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-lg"
+              className="select-field text-lg"
             >
               {LANGUAGES.map((lang) => (
                 <option key={lang} value={lang}>
@@ -123,7 +127,7 @@ export function LanguageSelector({
 
           {/* Secondary Language */}
           <div className="space-y-4 md:col-start-2 md:row-start-1">
-            <label className="block text-lg font-semibold text-gray-700">
+            <label className="block text-lg field-label">
               Other Person's Language
             </label>
             <select
@@ -131,7 +135,7 @@ export function LanguageSelector({
               onChange={(e) =>
                 handleLanguageChange("secondary", e.target.value)
               }
-              className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-lg"
+              className="select-field text-lg"
             >
               {LANGUAGES.map((lang) => (
                 <option key={lang} value={lang}>
@@ -150,7 +154,7 @@ export function LanguageSelector({
               isStarting ||
               selectedLanguages.primary === selectedLanguages.secondary
             }
-            className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
+            className="button-primary flex-1 text-lg"
           >
             {isStarting ? (
               <div className="flex items-center justify-center space-x-2">
@@ -179,7 +183,7 @@ export function LanguageSelector({
 
           <button
             onClick={onViewHistory}
-            className="flex-1 sm:flex-initial bg-gray-100 text-gray-700 px-8 py-4 rounded-xl font-semibold text-lg hover:bg-gray-200 transition-colors"
+            className="button-secondary flex-1 sm:flex-initial text-lg"
           >
             <div className="flex items-center justify-center space-x-2">
               <svg

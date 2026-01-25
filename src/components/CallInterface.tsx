@@ -374,8 +374,7 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
           }
           const response = isRecord(payload.response) ? payload.response : null;
           const responseId =
-            (typeof payload.response_id === "string" &&
-              payload.response_id) ||
+            (typeof payload.response_id === "string" && payload.response_id) ||
             (typeof response?.id === "string" ? response.id : null);
           if (
             responseId &&
@@ -395,8 +394,7 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
         if (payload.type === "response.output_audio_transcript.done") {
           const response = isRecord(payload.response) ? payload.response : null;
           const responseId =
-            (typeof payload.response_id === "string" &&
-              payload.response_id) ||
+            (typeof payload.response_id === "string" && payload.response_id) ||
             (typeof response?.id === "string" ? response.id : null);
           if (
             responseId &&
@@ -452,10 +450,8 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
             if (!isRecord(part)) {
               return null;
             }
-            const partText =
-              typeof part.text === "string" ? part.text : null;
-            const partType =
-              typeof part.type === "string" ? part.type : null;
+            const partText = typeof part.text === "string" ? part.text : null;
+            const partType = typeof part.type === "string" ? part.type : null;
             if (!partText) {
               return null;
             }
@@ -639,7 +635,14 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
       toast.error("Failed to end call");
       console.error(error);
     }
-  }, [callDuration, callId, endCall, generateSummary, onEndCall, stopRealtimeSession]);
+  }, [
+    callDuration,
+    callId,
+    endCall,
+    generateSummary,
+    onEndCall,
+    stopRealtimeSession,
+  ]);
 
   const handleEndCall = () => {
     void endCallFlow();
@@ -652,26 +655,26 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
     <div className="max-w-4xl mx-auto p-6 h-screen flex flex-col">
       {isConnecting ? (
         <div className="flex-1 flex flex-col items-center justify-center">
-          <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md text-center space-y-6">
+          <div className="panel panel-strong p-8 w-full max-w-md text-center space-y-6">
             <div className="flex items-center justify-center space-x-3">
               {connectionState === "connecting" ? (
-                <div className="h-6 w-6 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div>
+                <div className="h-6 w-6 rounded-full border-2 border-emerald-300 border-t-transparent animate-spin"></div>
               ) : (
                 <div
                   className={`h-4 w-4 rounded-full ${
-                    isError ? "bg-red-500" : "bg-gray-400"
+                    isError ? "bg-red-400" : "bg-slate-400"
                   }`}
                 ></div>
               )}
-              <span className="text-sm font-medium text-gray-600 capitalize">
+              <span className="text-sm font-medium text-slate-300 capitalize">
                 {connectionState}
               </span>
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">
+              <h2 className="text-2xl font-bold">
                 {isError ? "Connection failed" : "Connecting"}
               </h2>
-              <p className="text-gray-600 mt-2">
+              <p className="text-slate-300 mt-2">
                 {isError
                   ? "We couldn't establish the realtime session."
                   : "Setting up your live translation session."}
@@ -679,7 +682,7 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
             </div>
             <button
               onClick={handleEndCall}
-              className="w-full px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-semibold text-lg transition-colors"
+              className="button-danger w-full px-6 py-3 rounded-xl font-semibold text-lg transition-colors"
             >
               End Call
             </button>
@@ -688,39 +691,35 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
       ) : (
         <>
           {/* Header */}
-          <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+          <div className="panel panel-strong p-6 mb-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Live Translation
-                </h2>
-                <p className="text-gray-600">
+                <h2 className="text-2xl font-bold">Live Translation</h2>
+                <p className="text-slate-300">
                   {primaryLanguage} ↔ {secondaryLanguage}
                 </p>
               </div>
               <div className="text-right">
-                <div className="text-3xl font-mono font-bold text-blue-600">
+                <div className="text-3xl font-bold stat-mono text-emerald-300">
                   {formatDuration(callDuration)}
                 </div>
-                <div className="text-sm text-gray-500">Call Duration</div>
+                <div className="text-sm text-slate-400">Call Duration</div>
               </div>
             </div>
           </div>
 
           {/* Transcript Area */}
-          <div className="flex-1 bg-white rounded-2xl shadow-xl p-6 mb-6 overflow-hidden flex flex-col">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Live Transcript
-            </h3>
+          <div className="flex-1 panel p-6 mb-6 overflow-hidden flex flex-col">
+            <h3 className="text-lg font-semibold mb-4">Live Transcript</h3>
             <div
               ref={transcriptScrollRef}
-              className="flex-1 overflow-y-auto divide-y divide-gray-100"
+              className="flex-1 overflow-y-auto divide-y divider-soft"
               onScroll={handleTranscriptScroll}
             >
               {transcripts.length === 0 ? (
-                <div className="text-center text-gray-500 py-12">
+                <div className="text-center text-slate-400 py-12">
                   <svg
-                    className="w-16 h-16 mx-auto mb-4 text-gray-300"
+                    className="w-16 h-16 mx-auto mb-4 text-slate-500"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -748,7 +747,7 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
                     : []),
                 ].map((transcript, index) => (
                   <div key={index} className="py-3">
-                    <p className="text-gray-900 text-sm leading-relaxed">
+                    <p className="text-slate-100 text-sm leading-relaxed">
                       {transcript.originalText}
                       {"isPartial" in transcript ? "…" : ""}
                     </p>
@@ -759,12 +758,12 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
           </div>
 
           {/* Controls */}
-          <div className="bg-white rounded-2xl shadow-xl p-6">
+          <div className="panel p-6">
             <div className="flex items-center justify-end space-x-4">
               {needsAudioResume ? (
                 <button
                   onClick={resumeAudioPlayback}
-                  className="px-6 py-4 rounded-xl font-semibold text-lg transition-colors bg-amber-500 hover:bg-amber-600 text-white"
+                  className="button-secondary px-6 py-4 rounded-xl font-semibold text-lg"
                 >
                   Enable Audio
                 </button>
@@ -772,9 +771,7 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
               <button
                 onClick={toggleMute}
                 className={`px-6 py-4 rounded-xl font-semibold text-lg transition-colors ${
-                  isMuted
-                    ? "bg-yellow-500 hover:bg-yellow-600 text-white"
-                    : "bg-blue-500 hover:bg-blue-600 text-white"
+                  isMuted ? "button-secondary" : "button-primary"
                 }`}
               >
                 {isMuted ? "Unmute" : "Mute"}
@@ -782,7 +779,7 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
 
               <button
                 onClick={handleEndCall}
-                className="px-8 py-4 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-semibold text-lg transition-colors"
+                className="button-danger px-8 py-4 rounded-xl font-semibold text-lg transition-colors"
               >
                 End Call
               </button>

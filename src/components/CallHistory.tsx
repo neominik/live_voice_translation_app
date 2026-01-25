@@ -104,7 +104,7 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
         <div>
           <button
             onClick={onBack}
-            className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4"
+            className="flex items-center space-x-2 text-slate-400 hover:text-slate-200 mb-4"
           >
             <svg
               className="w-5 h-5"
@@ -121,18 +121,18 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
             </svg>
             <span>Back to Home</span>
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">Call History</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl font-bold">Call History</h1>
+          <p className="text-slate-400">
             View and search your past translation calls
           </p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl shadow-xl p-6 mb-8">
+      <div className="panel p-6 mb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm field-label mb-2">
               Search Calls
             </label>
             <input
@@ -140,17 +140,17 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by title or content..."
-              className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+              className="input-field"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm field-label mb-2">
               Primary Language
             </label>
             <select
               value={languageFilter}
               onChange={(e) => setLanguageFilter(e.target.value)}
-              className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+              className="select-field"
             >
               <option value="">All Languages</option>
               {availableLanguages.map((language) => (
@@ -161,13 +161,13 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm field-label mb-2">
               Secondary Language
             </label>
             <select
               value={secondaryLanguageFilter}
               onChange={(e) => setSecondaryLanguageFilter(e.target.value)}
-              className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+              className="select-field"
             >
               <option value="">All Languages</option>
               {availableLanguages.map((language) => (
@@ -178,25 +178,21 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Date From
-            </label>
+            <label className="block text-sm field-label mb-2">Date From</label>
             <input
               type="date"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+              className="input-field"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Date To
-            </label>
+            <label className="block text-sm field-label mb-2">Date To</label>
             <input
               type="date"
               value={dateToFilter}
               onChange={(e) => setDateToFilter(e.target.value)}
-              className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+              className="input-field"
             />
           </div>
         </div>
@@ -206,12 +202,12 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
       <div className="space-y-4">
         {calls === undefined ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-300"></div>
           </div>
         ) : calls.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
+          <div className="panel panel-strong p-12 text-center">
             <svg
-              className="w-16 h-16 mx-auto mb-4 text-gray-300"
+              className="w-16 h-16 mx-auto mb-4 text-slate-500"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -223,10 +219,8 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
                 d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
               />
             </svg>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              No calls found
-            </h3>
-            <p className="text-gray-600">
+            <h3 className="text-xl font-semibold mb-2">No calls found</h3>
+            <p className="text-slate-400">
               Start your first translation call to see it here
             </p>
           </div>
@@ -234,28 +228,26 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
           calls.map((call) => (
             <div
               key={call._id}
-              className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow p-6 cursor-pointer"
+              className="panel-muted p-6 cursor-pointer transition-transform hover:-translate-y-0.5"
               onClick={() => onViewCall(call._id)}
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center space-x-4 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {call.title}
-                    </h3>
+                    <h3 className="text-lg font-semibold">{call.title}</h3>
                     <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      className={`badge ${
                         call.status === "completed"
-                          ? "bg-green-100 text-green-800"
+                          ? "badge-success"
                           : call.status === "active"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-red-100 text-red-800"
+                            ? "badge-active"
+                            : "badge-failed"
                       }`}
                     >
                       {call.status}
                     </span>
                   </div>
-                  <div className="flex items-center space-x-6 text-sm text-gray-600">
+                  <div className="flex items-center space-x-6 text-sm text-slate-400">
                     <span className="flex items-center space-x-1">
                       <svg
                         className="w-4 h-4"
@@ -308,14 +300,14 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
                     </span>
                   </div>
                   {call.summary && (
-                    <p className="mt-2 text-gray-700 line-clamp-2">
+                    <p className="mt-2 text-slate-200 line-clamp-2">
                       {call.summary}
                     </p>
                   )}
                 </div>
                 <div className="ml-4">
                   <svg
-                    className="w-6 h-6 text-gray-400"
+                    className="w-6 h-6 text-slate-500"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
