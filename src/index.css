@@ -104,6 +104,7 @@ h3,
 .input-field,
 .select-field {
   width: 100%;
+  min-width: 0;
   padding: 14px 16px;
   background: var(--surface-strong);
   border: 1px solid var(--border);

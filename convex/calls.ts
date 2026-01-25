@@ -221,3 +221,33 @@ export const searchCalls = query({
     };
   },
 });
+
+export const deleteCall = mutation({
+  args: {
+    callId: v.id("calls"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    const userId = identity.subject;
+
+    const call = await ctx.db.get(args.callId);
+    if (!call || call.userId !== userId) {
+      throw new Error("Call not found or unauthorized");
+    }
+
+    const transcripts = await ctx.db
+      .query("transcripts")
+      .withIndex("by_call", (q) => q.eq("callId", args.callId))
+      .collect();
+
+    await Promise.all(
+      transcripts.map((transcript) => ctx.db.delete(transcript._id)),
+    );
+
+    await ctx.db.delete(args.callId);
+    return args.callId;
+  },
+});

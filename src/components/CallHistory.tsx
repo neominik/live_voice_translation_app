@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "convex/react";
+import type { MouseEvent } from "react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
+import { toast } from "sonner";
 
 interface CallHistoryProps {
   onViewCall: (callId: Id<"calls">) => void;
@@ -47,6 +49,8 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
   const availableCallsQuery = useQuery(api.calls.listCalls, {
     paginationOpts: { numItems: 1000, cursor: null },
   });
+
+  const deleteCall = useMutation(api.calls.deleteCall);
 
   const searchResults = useQuery(
     api.calls.searchCalls,
@@ -95,6 +99,26 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const handleDeleteCall = async (
+    event: MouseEvent<HTMLButtonElement>,
+    callId: Id<"calls">,
+  ) => {
+    event.stopPropagation();
+    const confirmed = window.confirm(
+      "Delete this call and its transcript? This cannot be undone.",
+    );
+    if (!confirmed) {
+      return;
+    }
+    try {
+      await deleteCall({ callId });
+      toast.success("Call deleted");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete call");
+    }
   };
 
   return (
@@ -231,95 +255,93 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
               className="panel-muted p-6 cursor-pointer transition-transform hover:-translate-y-0.5"
               onClick={() => onViewCall(call._id)}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-4 mb-2">
-                    <h3 className="text-lg font-semibold">{call.title}</h3>
-                    <span
-                      className={`badge ${
-                        call.status === "completed"
-                          ? "badge-success"
-                          : call.status === "active"
-                            ? "badge-active"
-                            : "badge-failed"
-                      }`}
+              <div className="flex flex-col gap-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex min-w-0">
+                    <h3 className="text-lg font-semibold truncate">
+                      {call.title}
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(event) => handleDeleteCall(event, call._id)}
+                      className="button-danger h-9 w-9 p-0 rounded-full flex items-center justify-center"
+                      aria-label="Delete call"
                     >
-                      {call.status}
-                    </span>
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m-4 0h14"
+                        />
+                      </svg>
+                    </button>
                   </div>
-                  <div className="flex items-center space-x-6 text-sm text-slate-400">
-                    <span className="flex items-center space-x-1">
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
-                        />
-                      </svg>
-                      <span>
-                        {call.primaryLanguage} ↔ {call.secondaryLanguage}
-                      </span>
-                    </span>
-                    <span className="flex items-center space-x-1">
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      <span>{formatDuration(call.duration)}</span>
-                    </span>
-                    <span className="flex items-center space-x-1">
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0h6m-6 0l-2 2m8-2l2 2m-2-2v12a2 2 0 01-2 2H8a2 2 0 01-2-2V9"
-                        />
-                      </svg>
-                      <span>{formatDate(call.startedAt)}</span>
-                    </span>
-                  </div>
-                  {call.summary && (
-                    <p className="mt-2 text-slate-200 line-clamp-2">
-                      {call.summary}
-                    </p>
-                  )}
                 </div>
-                <div className="ml-4">
-                  <svg
-                    className="w-6 h-6 text-slate-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-400">
+                  <span className="flex items-center space-x-1">
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+                      />
+                    </svg>
+                    <span>
+                      {call.primaryLanguage} ↔ {call.secondaryLanguage}
+                    </span>
+                  </span>
+                  <span className="flex items-center space-x-1">
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <span>{formatDuration(call.duration)}</span>
+                  </span>
+                  <span className="flex items-center space-x-1">
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0h6m-6 0l-2 2m8-2l2 2m-2-2v12a2 2 0 01-2 2H8a2 2 0 01-2-2V9"
+                      />
+                    </svg>
+                    <span>{formatDate(call.startedAt)}</span>
+                  </span>
                 </div>
+                {call.summary && (
+                  <p className="text-slate-200 line-clamp-2">
+                    {call.summary}
+                  </p>
+                )}
               </div>
             </div>
           ))
