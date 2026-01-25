@@ -40,4 +40,8 @@ window.addEventListener('message', async (message) => {
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    outDir: "docs",
+  },
+  base: "/live_voice_translation_app/",
 }));
