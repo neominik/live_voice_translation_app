@@ -7,10 +7,10 @@ export function SignInForm() {
     <div className="w-full">
       <div className="flex flex-col gap-form-field">
         <button className="auth-button" onClick={() => void signIn()}>
-          Sign in with Apple
+          Sign in
         </button>
         <p className="text-center text-sm text-secondary">
-          Sign in with your Apple ID to continue.
+          Sign in to continue.
         </p>
       </div>
     </div>
