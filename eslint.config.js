@@ -10,7 +10,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default tseslint.config(
   {
-    ignores: ["dist", "node_modules", "convex/_generated"],
+    ignores: ["dist", "node_modules", "convex/_generated", "docs"],
   },
   js.configs.recommended,
   {
@@ -50,7 +50,10 @@ export default tseslint.config(
       "@typescript-eslint/no-floating-promises": "error",
       "react-hooks/exhaustive-deps": "warn",
       "react-hooks/rules-of-hooks": "error",
-      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+      "react-refresh/only-export-components": [
+        "warn",
+        { allowConstantExport: true },
+      ],
     },
-  }
+  },
 );
