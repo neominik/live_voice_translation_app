@@ -265,7 +265,9 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={(event) => handleDeleteCall(event, call._id)}
+                      onClick={(event) => {
+                        void handleDeleteCall(event, call._id);
+                      }}
                       className="button-danger h-9 w-9 p-0 rounded-full flex items-center justify-center"
                       aria-label="Delete call"
                     >
@@ -338,9 +340,7 @@ export function CallHistory({ onViewCall, onBack }: CallHistoryProps) {
                   </span>
                 </div>
                 {call.summary && (
-                  <p className="text-slate-200 line-clamp-2">
-                    {call.summary}
-                  </p>
+                  <p className="text-slate-200 line-clamp-2">{call.summary}</p>
                 )}
               </div>
             </div>
