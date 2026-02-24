@@ -60,7 +60,7 @@ export const createRealtimeSession = action({
 
     const session = {
       type: "realtime",
-      model: "gpt-realtime",
+      model: "gpt-realtime-1.5",
       instructions: buildInterpreterPrompt(
         args.primaryLanguage,
         args.secondaryLanguage,

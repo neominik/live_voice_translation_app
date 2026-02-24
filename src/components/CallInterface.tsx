@@ -310,7 +310,7 @@ Output (${primaryLanguage}): “Wir sollten uns um fünf treffen. Bring außerde
             type: "session.update",
             session: {
               type: "realtime",
-              model: "gpt-realtime",
+              model: "gpt-realtime-1.5",
               instructions: promptRef.current,
               audio: {
                 output: {
